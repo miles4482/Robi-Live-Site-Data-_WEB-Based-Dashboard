@@ -181,8 +181,8 @@ const VIEW = __DATA__;
 const CODE = 0, NAME = 1, YEAR = 2, DATE = 3, STATUS = 4, TYPE = 5, VOICE = 6, DATA4G = 7;
 const LINE = "#156082";
 const CHARTS = [
-  { id: "voiceChart", tip: "voiceTip", key: "voice", title: "Total voice(Erl) vs On Air Year", yTitle: "Avg Total voice, Erl / site", unit: "Erl", label: "Avg Total voice" },
-  { id: "dataChart", tip: "dataTip", key: "data", title: "DAILY 4G DATA (GB) vs  On Air Year", yTitle: "Avg DAILY 4G DATA, GB / site", unit: "GB", label: "Avg DAILY 4G DATA" }
+  { id: "voiceChart", tip: "voiceTip", key: "voice", title: "Total voice(Erl) vs On Air Year", yTitle: "Total Voice, Erl", unit: "Erl", label: "Total voice", secondary: true },
+  { id: "dataChart", tip: "dataTip", key: "data", title: "DAILY 4G DATA (GB) vs  On Air Year", yTitle: "Daily 4G Data volume, GB", unit: "GB", label: "Daily 4G Data volume", secondary: false }
 ];
 let districtIndex = 0;
 let thanaIndex = -1;
@@ -236,7 +236,7 @@ function buildSeries(rows) {
   });
   return [...map.keys()].sort((a, b) => a - b).map(year => {
     const acc = map.get(year);
-    return { year, n: acc.n, voice: acc.voice / acc.n, data: acc.data / acc.n };
+    return { year, n: acc.n, voice: acc.voice, data: acc.data };
   });
 }
 
@@ -281,7 +281,8 @@ function drawChart(spec) {
 
   const points = series;
   const values = points.map(point => point[spec.key]);
-  const pad = { l: 78, r: 18, t: 46, b: 72 };
+  const secondary = !!spec.secondary;
+  const pad = { l: 78, r: secondary ? 58 : 22, t: 46, b: 72 };
   const plotW = width - pad.l - pad.r, plotH = height - pad.t - pad.b;
   const peak = values.length ? Math.max(...values) : 0;
   const step = niceStep(peak * 1.05);
@@ -346,6 +347,34 @@ function drawChart(spec) {
     return;
   }
   const xs = points.map((_, i) => xAt(i)), ys = values.map(yAt);
+  let yCount = null;
+  if (secondary) {
+    const countPeak = Math.max(...points.map(point => point.n), 1);
+    const countStep = Math.max(1, Math.round(niceStep(countPeak)));
+    const countMax = Math.max(countStep, Math.ceil(countPeak / countStep) * countStep);
+    yCount = v => pad.t + plotH - (v / countMax) * plotH;
+    const gap = n <= 1 ? plotW : plotW / (n - 1);
+    const barW = Math.max(8, Math.min(26, gap * 0.42));
+    points.forEach((point, i) => {
+      const y = yCount(point.n);
+      ctx.fillStyle = i === hover ? "rgba(237, 125, 49, 0.85)" : "rgba(237, 125, 49, 0.45)";
+      ctx.fillRect(xs[i] - barW / 2, y, barW, axisY - y);
+    });
+    ctx.fillStyle = "#C65911";
+    ctx.font = "12px Calibri, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    for (let v = 0; v <= countMax + 0.1; v += countStep) {
+      ctx.fillText(String(v), width - pad.r + 8, yCount(v));
+    }
+    ctx.save();
+    ctx.translate(width - 14, pad.t + plotH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.font = "13px Calibri, sans-serif";
+    ctx.fillText("Site count", 0, 0);
+    ctx.restore();
+  }
   ctx.strokeStyle = LINE;
   ctx.lineWidth = 3;
   ctx.lineJoin = "round";
@@ -375,8 +404,9 @@ function showTips() {
     const tip = document.getElementById(spec.tip);
     const geom = document.getElementById(spec.id)._geom;
     if (!point || !geom || hover >= series.length) { tip.style.display = "none"; return; }
-    tip.innerHTML = `<b>${yearLabel(point.year)}</b> · ${point.n.toLocaleString()} site${point.n === 1 ? "" : "s"}<br>` +
-      `<span style="color:${LINE}">${spec.label}: <b>${fmt(point[spec.key], 1)} ${spec.unit} / site</b></span>`;
+    const countLine = spec.secondary ? `<br><span style="color:#C65911">Site count: <b>${point.n.toLocaleString()}</b></span>` : "";
+    tip.innerHTML = `<b>${yearLabel(point.year)}</b><br>` +
+      `<span style="color:${LINE}">${spec.label}: <b>${fmt(point[spec.key], 1)} ${spec.unit}</b></span>${countLine}`;
     tip.style.display = "block";
     const box = tip.parentElement.getBoundingClientRect();
     const tipW = tip.offsetWidth, tipH = tip.offsetHeight;
@@ -425,8 +455,8 @@ function renderReport() {
   series = buildSeries(rows);
   const first = series.length ? series[0].year : null;
   const last = series.length ? series[series.length - 1].year : null;
-  const voiceAvg = onRows.length ? onRows.reduce((acc, row) => acc + row.site[VOICE], 0) / onRows.length : null;
-  const dataAvg = onRows.length ? onRows.reduce((acc, row) => acc + row.site[DATA4G], 0) / onRows.length : null;
+  const voiceSum = onRows.reduce((acc, row) => acc + row.site[VOICE], 0);
+  const dataSum = onRows.reduce((acc, row) => acc + row.site[DATA4G], 0);
   const place = isDistrictView() ? d.name + " district" : thana().name;
   document.getElementById("title").textContent = place;
   document.getElementById("caption").textContent =
@@ -460,15 +490,15 @@ function renderReport() {
   document.getElementById("kpis").innerHTML = chips.join("");
   const off = rows.length - onRows.length;
   document.getElementById("note").textContent =
-    "Each point is one On Air Year, oldest first. The value is the average per site: the sites of that year added together, then divided by how many of those sites are on the chart." +
+    "Each point is one On Air Year, oldest first. The line is the sum for that year. On the Total voice chart, the bars and the right axis are the site count." +
     (off ? ` ${off} site${off === 1 ? " is" : "s are"} not on the chart (no On Air Year, or #N/A value) and ${off === 1 ? "is" : "are"} listed at the bottom of the site table.` : "");
 
   const yearRows = series.map((point, i) =>
     `<tr data-i="${i}"><td>${yearLabel(point.year)}</td><td class="num">${point.n}</td><td class="num">${fmt(point.voice, 1)}</td><td class="num">${fmt(point.data, 1)}</td></tr>`).join("");
   document.getElementById("yearTable").innerHTML =
-    `<thead><tr><th>On Air Year</th><th class="num">Sites</th><th class="num">Total voice, avg / site (Erl)</th><th class="num">DAILY 4G DATA, avg / site (GB)</th></tr></thead>` +
+    `<thead><tr><th>On Air Year</th><th class="num">Sites</th><th class="num">Total voice (Erl)</th><th class="num">DAILY 4G DATA (GB)</th></tr></thead>` +
     `<tbody>${yearRows}</tbody>` +
-    (onRows.length ? `<tfoot><tr class="total"><td>Avg / site</td><td class="num">${onRows.length}</td><td class="num">${fmt(voiceAvg, 1)}</td><td class="num">${fmt(dataAvg, 1)}</td></tr></tfoot>` : "");
+    (onRows.length ? `<tfoot><tr class="total"><td>Total</td><td class="num">${onRows.length}</td><td class="num">${fmt(voiceSum, 1)}</td><td class="num">${fmt(dataSum, 1)}</td></tr></tfoot>` : "");
 
   document.getElementById("siteHead").textContent = `Sites in ${place} (${rows.length.toLocaleString()})`;
   const thanaHead = isDistrictView() ? "<th>Thana</th>" : "";
@@ -601,11 +631,11 @@ function num(value) {
 }
 document.getElementById("exportYear").addEventListener("click", () => {
   const onRows = exportRows.filter(row => row.on);
-  const voiceAvg = onRows.length ? onRows.reduce((acc, row) => acc + row.site[VOICE], 0) / onRows.length : "";
-  const dataAvg = onRows.length ? onRows.reduce((acc, row) => acc + row.site[DATA4G], 0) / onRows.length : "";
-  const table = [["On Air Year", "Sites", "Total voice, avg / site (Erl)", "DAILY 4G DATA, avg / site (GB)"]];
+  const voiceSum = onRows.reduce((acc, row) => acc + row.site[VOICE], 0);
+  const dataSum = onRows.reduce((acc, row) => acc + row.site[DATA4G], 0);
+  const table = [["On Air Year", "Sites", "Total voice (Erl)", "DAILY 4G DATA (GB)"]];
   series.forEach(point => table.push([yearLabel(point.year), point.n, point.voice.toFixed(2), point.data.toFixed(2)]));
-  if (onRows.length) table.push(["Avg / site", onRows.length, Number(voiceAvg).toFixed(2), Number(dataAvg).toFixed(2)]);
+  if (onRows.length) table.push(["Total", onRows.length, voiceSum.toFixed(2), dataSum.toFixed(2)]);
   downloadCsv(exportName("by_on_air_year"), table);
 });
 document.getElementById("exportSites").addEventListener("click", () => {
