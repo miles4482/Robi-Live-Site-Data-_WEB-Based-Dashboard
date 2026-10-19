@@ -94,6 +94,8 @@
   .kpi b { display: block; font-size: 13px; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .kpi span { color: var(--muted); font-size: 10px; line-height: 1.2; white-space: nowrap; }
   .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px; }
+  .charts.cumul { grid-template-columns: 1fr; margin-top: 12px; }
+  .charts.cumul .card { height: 300px; }
   .card { background: #fff; border: 1px solid #c8c8c8; position: relative; height: 380px; min-width: 0; }
   .card canvas { width: 100%; height: 100%; display: block; }
   .tip {
@@ -164,6 +166,9 @@
     <div class="card"><canvas id="voiceChart"></canvas><div class="tip" id="voiceTip"></div></div>
     <div class="card"><canvas id="dataChart"></canvas><div class="tip" id="dataTip"></div></div>
   </div>
+  <div class="charts cumul">
+    <div class="card"><canvas id="cumulChart"></canvas><div class="tip" id="cumulTip"></div></div>
+  </div>
   <p class="note" id="note"></p>
   <div class="report">
     <section class="panel">
@@ -182,7 +187,8 @@ const CODE = 0, NAME = 1, YEAR = 2, DATE = 3, STATUS = 4, TYPE = 5, VOICE = 6, D
 const LINE = "#156082";
 const CHARTS = [
   { id: "voiceChart", tip: "voiceTip", key: "voice", title: "Total voice(Erl) vs On Air Year", yTitle: "Total Voice, Erl", unit: "Erl", label: "Total voice", secondary: true },
-  { id: "dataChart", tip: "dataTip", key: "data", title: "DAILY 4G DATA (GB) vs  On Air Year", yTitle: "Daily 4G Data volume, GB", unit: "GB", label: "Daily 4G Data volume", secondary: false }
+  { id: "dataChart", tip: "dataTip", key: "data", title: "DAILY 4G DATA (GB) vs  On Air Year", yTitle: "Daily 4G Data volume, GB", unit: "GB", label: "Daily 4G Data volume", secondary: false },
+  { id: "cumulChart", tip: "cumulTip", key: "cumulative", title: "Cumulative site count vs On Air Year", yTitle: "Cumulative site count", unit: "sites", label: "Cumulative site count", secondary: false }
 ];
 let districtIndex = 0;
 let thanaIndex = -1;
@@ -234,9 +240,11 @@ function buildSeries(rows) {
     acc.data += row.site[DATA4G];
     map.set(year, acc);
   });
+  let running = 0;
   return [...map.keys()].sort((a, b) => a - b).map(year => {
     const acc = map.get(year);
-    return { year, n: acc.n, voice: acc.voice, data: acc.data };
+    running += acc.n;
+    return { year, n: acc.n, voice: acc.voice, data: acc.data, cumulative: running };
   });
 }
 
@@ -404,7 +412,9 @@ function showTips() {
     const tip = document.getElementById(spec.tip);
     const geom = document.getElementById(spec.id)._geom;
     if (!point || !geom || hover >= series.length) { tip.style.display = "none"; return; }
-    const countLine = spec.secondary ? `<br><span style="color:#C65911">Site count: <b>${point.n.toLocaleString()}</b></span>` : "";
+    const countLine = spec.secondary
+      ? `<br><span style="color:#C65911">Site count: <b>${point.n.toLocaleString()}</b></span>`
+      : (spec.key === "cumulative" ? `<br>Added this year: <b>${point.n.toLocaleString()}</b>` : "");
     tip.innerHTML = `<b>${yearLabel(point.year)}</b><br>` +
       `<span style="color:${LINE}">${spec.label}: <b>${fmt(point[spec.key], 1)} ${spec.unit}</b></span>${countLine}`;
     tip.style.display = "block";
@@ -490,7 +500,7 @@ function renderReport() {
   document.getElementById("kpis").innerHTML = chips.join("");
   const off = rows.length - onRows.length;
   document.getElementById("note").textContent =
-    "Each point is one On Air Year, oldest first. The line is the sum for that year. On the Total voice chart, the bars and the right axis are the site count." +
+    "Each point is one On Air Year, oldest first. The voice and 4G lines are the sum for that year. On the Total voice chart, the bars and the right axis are the site count. Cumulative site count adds each year's sites onto the years before it." +
     (off ? ` ${off} site${off === 1 ? " is" : "s are"} not on the chart (no On Air Year, or #N/A value) and ${off === 1 ? "is" : "are"} listed at the bottom of the site table.` : "");
 
   const yearRows = series.map((point, i) =>
