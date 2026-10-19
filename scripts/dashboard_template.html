@@ -105,7 +105,7 @@
     white-space: nowrap;
   }
   .note { padding: 6px 16px 0; color: var(--muted); font-size: 11.5px; }
-  .report { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 12px; padding: 12px 16px 0; align-items: start; }
+  .report { display: grid; grid-template-columns: minmax(460px, 560px) minmax(0, 1fr); gap: 12px; padding: 12px 16px 0; align-items: start; }
   .panel { background: #fff; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
   .panel h3 { margin: 0; padding: 4px 8px; color: #fff; font-size: 12px; background: var(--navy); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .panel.sites h3 { background: var(--teal); }
@@ -242,11 +242,13 @@ function buildSeries(rows) {
     acc.data += row.site[DATA4G];
     map.set(year, acc);
   });
-  let running = 0;
+  let running = 0, voiceRun = 0, dataRun = 0;
   return [...map.keys()].sort((a, b) => a - b).map(year => {
     const acc = map.get(year);
     running += acc.n;
-    return { year, n: acc.n, voice: acc.voice, data: acc.data, cumulative: running };
+    voiceRun += acc.voice;
+    dataRun += acc.data;
+    return { year, n: acc.n, voice: voiceRun, data: dataRun, cumulative: running };
   });
 }
 
@@ -437,9 +439,10 @@ function showTips() {
     const tip = document.getElementById(spec.tip);
     const geom = document.getElementById(spec.id)._geom;
     if (!point || !geom || hover >= series.length) { tip.style.display = "none"; return; }
-    const countLine = spec.secondary
-      ? `<br><span style="color:#C65911">Site count: <b>${point.n.toLocaleString()}</b></span>`
-      : (spec.key === "cumulative" ? `<br>Added this year: <b>${point.n.toLocaleString()}</b>` : "");
+    const countLine = spec.key === "cumulative"
+      ? `<br>Added this year: <b>${point.n.toLocaleString()}</b>`
+      : `<br>Sum of <b>${point.cumulative.toLocaleString()}</b> sites` +
+        (spec.secondary ? `<br><span style="color:#C65911">Site count this year: <b>${point.n.toLocaleString()}</b></span>` : "");
     tip.innerHTML = `<b>${yearLabel(point.year)}</b><br>` +
       `<span style="color:${LINE}">${spec.label}: <b>${fmt(point[spec.key], 1)} ${spec.unit}</b></span>${countLine}`;
     tip.style.display = "block";
@@ -525,15 +528,15 @@ function renderReport() {
   document.getElementById("kpis").innerHTML = chips.join("");
   const off = rows.length - onRows.length;
   document.getElementById("note").textContent =
-    "Each point is one On Air Year, oldest first. The voice and 4G lines are the sum for that year. On the Total voice chart, the bars and the right axis are the site count. Cumulative site count adds each year's sites onto the years before it." +
+    "Each point is one On Air Year, oldest first. The voice and 4G lines are the sum of every site on air up to and including that year. On the Total voice chart, the bars and the right axis are the sites added in that year only. Cumulative site count is the running site count." +
     (off ? ` ${off} site${off === 1 ? " is" : "s are"} not on the chart (no On Air Year, or #N/A value) and ${off === 1 ? "is" : "are"} listed at the bottom of the site table.` : "");
 
   const yearRows = series.map((point, i) =>
-    `<tr data-i="${i}"><td>${yearLabel(point.year)}</td><td class="num">${point.n}</td><td class="num">${fmt(point.voice, 1)}</td><td class="num">${fmt(point.data, 1)}</td></tr>`).join("");
+    `<tr data-i="${i}"><td>${yearLabel(point.year)}</td><td class="num">${point.n}</td><td class="num">${point.cumulative}</td><td class="num">${fmt(point.voice, 1)}</td><td class="num">${fmt(point.data, 1)}</td></tr>`).join("");
   document.getElementById("yearTable").innerHTML =
-    `<thead><tr><th>On Air Year</th><th class="num">Sites</th><th class="num">Total voice (Erl)</th><th class="num">DAILY 4G DATA (GB)</th></tr></thead>` +
+    `<thead><tr><th>On Air Year</th><th class="num">Sites this year</th><th class="num">Cumulative sites</th><th class="num">Cumulative Total voice (Erl)</th><th class="num">Cumulative DAILY 4G DATA (GB)</th></tr></thead>` +
     `<tbody>${yearRows}</tbody>` +
-    (onRows.length ? `<tfoot><tr class="total"><td>Total</td><td class="num">${onRows.length}</td><td class="num">${fmt(voiceSum, 1)}</td><td class="num">${fmt(dataSum, 1)}</td></tr></tfoot>` : "");
+    (onRows.length ? `<tfoot><tr class="total"><td>Total</td><td class="num">${onRows.length}</td><td class="num">${onRows.length}</td><td class="num">${fmt(voiceSum, 1)}</td><td class="num">${fmt(dataSum, 1)}</td></tr></tfoot>` : "");
 
   document.getElementById("siteHead").textContent = `Sites in ${place} (${rows.length.toLocaleString()})`;
   const thanaHead = isDistrictView() ? "<th>Thana</th>" : "";
@@ -695,9 +698,9 @@ document.getElementById("exportYear").addEventListener("click", () => {
   const onRows = exportRows.filter(row => row.on);
   const voiceSum = onRows.reduce((acc, row) => acc + row.site[VOICE], 0);
   const dataSum = onRows.reduce((acc, row) => acc + row.site[DATA4G], 0);
-  const table = [["On Air Year", "Sites", "Total voice (Erl)", "DAILY 4G DATA (GB)"]];
-  series.forEach(point => table.push([yearLabel(point.year), point.n, point.voice.toFixed(2), point.data.toFixed(2)]));
-  if (onRows.length) table.push(["Total", onRows.length, voiceSum.toFixed(2), dataSum.toFixed(2)]);
+  const table = [["On Air Year", "Sites this year", "Cumulative sites", "Cumulative Total voice (Erl)", "Cumulative DAILY 4G DATA (GB)"]];
+  series.forEach(point => table.push([yearLabel(point.year), point.n, point.cumulative, point.voice.toFixed(2), point.data.toFixed(2)]));
+  if (onRows.length) table.push(["Total", onRows.length, onRows.length, voiceSum.toFixed(2), dataSum.toFixed(2)]);
   downloadCsv(exportName("by_on_air_year"), table);
 });
 document.getElementById("exportSites").addEventListener("click", () => {

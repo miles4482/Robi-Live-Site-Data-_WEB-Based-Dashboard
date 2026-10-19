@@ -1,6 +1,6 @@
 # Robi-Live-Site-Data-_WEB-Based-Dashboard
 
-Web dashboard for `Robi Live Site_Aug_2026.xlsx`: pick a **District** (its chart is the first row of the list) or a **Thana**. Two charts open side by side, `On Air Year` vs the sum of `Total voice` and `On Air Year` vs the sum of `DAILY 4G DATA (GB)`, oldest year first. The voice chart also shows site count on a right-hand axis.
+Web dashboard for `Robi Live Site_Aug_2026.xlsx`: pick a **District** (its chart is the first row of the list) or a **Thana**. Two charts open side by side, `On Air Year` vs the cumulative sum of `Total voice` and `On Air Year` vs the cumulative sum of `DAILY 4G DATA (GB)`, oldest year first. Each point is the sum of every site on air up to and including that year. The voice chart also shows that year's site count on a right-hand axis.
 
 All rules are in `RULES.md`.
 
@@ -8,8 +8,8 @@ All rules are in `RULES.md`.
 
 | File | Purpose |
 |---|---|
-| `Robi_Live_Site_Aug_2026_Dashboard_v11.zip` | The dashboard. Unzip it and open the `.html` file in Chrome or Edge. Works offline |
-| `Robi_Live_Site_Aug_2026_Dashboard_v11.html` | The same page, unzipped. GitHub shows a raw `.html` as plain text, so download the zip |
+| `Robi_Live_Site_Aug_2026_Dashboard_v12.zip` | The dashboard. Unzip it and open the `.html` file in Chrome or Edge. Works offline |
+| `Robi_Live_Site_Aug_2026_Dashboard_v12.html` | The same page, unzipped. GitHub shows a raw `.html` as plain text, so download the zip |
 | `scripts/build_dashboard.py` | Reads the workbook and writes the page and the zip |
 | `scripts/dashboard_template.html` | Page layout, charts and report |
 | `RULES.md` | Filter, chart, sorting and data rules |
@@ -18,5 +18,5 @@ All rules are in `RULES.md`.
 ## Rebuild
 
 ```bash
-python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v11.html --version v11
+python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v12.html --version v12
 ```
