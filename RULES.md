@@ -1,4 +1,4 @@
-# Dashboard rules — v6
+# Dashboard rules — v7
 
 Source: `Robi Live Site_Aug_2026.xlsx`, first sheet. Columns are found by their header text on row 1, not by letter.
 
@@ -10,7 +10,8 @@ One web page, no Excel output. A single self-contained HTML file (charts drawn o
 - Two charts beside each other:
   1. `On Air Year` (X) vs `Total voice` (Y), titled `Total voice(Erl) vs On Air Year`, left Y axis `Total Voice, Erl` (the sum). The right Y axis is **Site count**, drawn as bars. This secondary axis is only on the voice chart.
   2. `On Air Year` (X) vs `DAILY 4G DATA (GB)` (Y), titled `DAILY 4G DATA (GB) vs  On Air Year`, Y axis `Daily 4G Data volume, GB` (the sum). No site-count axis.
-  3. Below those two, one full-width line chart: `On Air Year` (X) vs `Cumulative site count` (Y). The line is the running total of sites on the chart, oldest year first. It is a line, not bars. A missing year is skipped because it adds no sites.
+  3. Below those two, one full-width line chart: `On Air Year` (X) vs `Cumulative site count` (Y). The line is the running total of sites on the chart, oldest year first. It is a line, not bars. A missing year is skipped because it adds no sites. Each point is labeled with that running total.
+- The site-count bars on the voice chart are labeled with that year's site count. The voice line and the 4G line are not labeled.
 - Report under the charts: site-count chips, then **per site Total voice (Erl)** and **per site data volume (GB)**. A thana view shows that thana's two averages and the district's two averages. The district view shows the district's two averages. Under the chips: a **By On Air Year** table of the yearly sums, and the site table. The site table keeps each site's own voice and data.
 - Each table has an **Export** button. It downloads a CSV of that table for the district or thana on screen (every row, including sites with no On Air Year or `#N/A`). Excel opens the file. Numbers have no thousands separator.
 - The URL hash is `#District` for the district chart and `#District/Thana` for a thana.
@@ -37,7 +38,7 @@ One web page, no Excel output. A single self-contained HTML file (charts drawn o
 ## Build
 
 ```bash
-python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v6.html --version v6
+python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v7.html --version v7
 ```
 
 Python 3 standard library only. Writes the `.html` and the `.zip` next to it. For a new month, upload the new workbook, run the same command with the new file name and the next version, and keep these rules.

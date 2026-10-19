@@ -401,6 +401,29 @@ function drawChart(spec) {
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(xs[hover], ys[hover], 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
+  function valueLabel(text, x, y, color) {
+    ctx.font = "bold 11px Calibri, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#fff";
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+  if (secondary) {
+    points.forEach((point, i) => {
+      const top = yCount(point.n);
+      const y = top - 11 < pad.t + 4 ? top + 11 : top - 11;
+      valueLabel(String(point.n), xs[i], y, "#C65911");
+    });
+  }
+  if (spec.key === "cumulative") {
+    points.forEach((point, i) => {
+      const y = ys[i] - 12 < pad.t + 4 ? ys[i] + 12 : ys[i] - 12;
+      valueLabel(String(point.cumulative), xs[i], y, LINE);
+    });
+  }
   canvas._geom = { pad, plotW, plotH, n, xs, ys };
 }
 
