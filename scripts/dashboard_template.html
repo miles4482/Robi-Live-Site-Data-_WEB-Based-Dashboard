@@ -142,8 +142,9 @@
 </div>
 <aside>
   <div class="tools">
-    <label for="district">District</label>
-    <select id="district"></select>
+    <label for="districtQ">District</label>
+    <input id="districtQ" type="search" placeholder="Search district" autocomplete="off">
+    <select id="district" aria-label="District"></select>
     <label for="q">Thana</label>
     <input id="q" type="search" placeholder="Search thana" autocomplete="off">
     <p class="sub" id="listInfo"></p>
@@ -191,6 +192,7 @@ const CHARTS = [
   { id: "cumulChart", tip: "cumulTip", key: "cumulative", title: "Cumulative site count vs On Air Year", yTitle: "Cumulative site count", unit: "sites", label: "Cumulative site count", secondary: false }
 ];
 let districtIndex = 0;
+let districtQuery = "";
 let thanaIndex = -1;
 let query = "";
 let hover = -1;
@@ -599,11 +601,30 @@ function selectThana(index) {
   } catch (err) {}
 }
 
+function districtMatches() {
+  const q = districtQuery.trim().toLowerCase();
+  return VIEW.districts.map((d, i) => ({ d, i })).filter(({ d }) => !q || d.name.toLowerCase().includes(q));
+}
+function renderDistrictSelect() {
+  const matches = districtMatches();
+  const visible = !districtQuery.trim() || matches.some(row => row.i === districtIndex) || !matches.length
+    ? matches
+    : [{ d: VIEW.districts[districtIndex], i: districtIndex }, ...matches];
+  const select = document.getElementById("district");
+  select.innerHTML = visible.length ? visible.map(({ d, i }) => {
+    const n = d.thanas.reduce((acc, t) => acc + t.sites.length, 0);
+    return `<option value="${i}">${esc(d.name)} (${n.toLocaleString()} sites)</option>`;
+  }).join("") : `<option value="${districtIndex}">No district matches</option>`;
+  select.size = districtQuery.trim() && visible.length > 1 ? Math.min(visible.length, 6) : 1;
+  select.value = String(districtIndex);
+}
 function selectDistrict(index, thanaName) {
   districtIndex = index;
+  districtQuery = "";
+  document.getElementById("districtQ").value = "";
   query = "";
   document.getElementById("q").value = "";
-  document.getElementById("district").value = String(index);
+  renderDistrictSelect();
   const found = thanaName ? district().thanas.findIndex(t => t.name === thanaName) : -1;
   selectThana(found >= 0 ? found : -1);
 }
@@ -620,11 +641,19 @@ const totalSites = VIEW.districts.reduce((acc, d) => acc + d.thanas.reduce((a, t
 const totalThanas = VIEW.districts.reduce((acc, d) => acc + d.thanas.length, 0);
 document.getElementById("source").textContent =
   `${VIEW.source} · ${totalSites.toLocaleString()} sites · ${VIEW.districts.length} districts · ${totalThanas} thanas · ${VIEW.version}`;
-document.getElementById("district").innerHTML = VIEW.districts.map((d, i) => {
-  const n = d.thanas.reduce((acc, t) => acc + t.sites.length, 0);
-  return `<option value="${i}">${esc(d.name)} (${n.toLocaleString()} sites)</option>`;
-}).join("");
-document.getElementById("district").addEventListener("change", event => selectDistrict(Number(event.target.value)));
+document.getElementById("district").addEventListener("change", event => {
+  const index = Number(event.target.value);
+  if (!Number.isNaN(index)) selectDistrict(index);
+});
+document.getElementById("districtQ").addEventListener("input", event => {
+  districtQuery = event.target.value;
+  renderDistrictSelect();
+});
+document.getElementById("districtQ").addEventListener("keydown", event => {
+  if (event.key !== "Enter") return;
+  const matches = districtMatches();
+  if (matches.length) selectDistrict(matches[0].i);
+});
 document.getElementById("q").addEventListener("input", event => {
   query = event.target.value;
   renderList();

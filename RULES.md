@@ -1,4 +1,4 @@
-# Dashboard rules — v10
+# Dashboard rules — v11
 
 Source: `Robi Live Site_Aug_2026.xlsx`, first sheet. Columns are found by their header text on row 1, not by letter.
 
@@ -6,7 +6,7 @@ Source: `Robi Live Site_Aug_2026.xlsx`, first sheet. Columns are found by their 
 
 One web page, no Excel output. A single self-contained HTML file (charts drawn on canvas, no internet libraries), delivered as a zip because GitHub shows a raw `.html` as plain text.
 
-- Left panel: **District** filter (column `District`, A to Z, with site counts). Choosing a district opens the **district chart** and lists that district at the top of the thana list (navy row), then every **Thana** (column `Thana`, A to Z, numbered). Click the district row for the district chart, or a thana for that thana. A search box narrows the thanas; the district row stays pinned. Previous / Next steps through the district row and the listed thanas.
+- Left panel: **District** filter (column `District`, A to Z, with site counts) and a **Search district** box. Typing narrows the district list. Enter opens the first match. Choosing a district opens the **district chart** and lists that district at the top of the thana list (navy row), then every **Thana** (column `Thana`, A to Z, numbered). Click the district row for the district chart, or a thana for that thana. A search box narrows the thanas; the district row stays pinned. Previous / Next steps through the district row and the listed thanas.
 - Two charts beside each other:
   1. `On Air Year` (X) vs `Total voice` (Y), titled `Total voice(Erl) vs On Air Year`, left Y axis `Total Voice, Erl` (the sum). The right Y axis is **Site count**, drawn as bars. This secondary axis is only on the voice chart.
   2. `On Air Year` (X) vs `DAILY 4G DATA (GB)` (Y), titled `DAILY 4G DATA (GB) vs  On Air Year`, Y axis `Daily 4G Data volume, GB` (the sum). No site-count axis.
@@ -38,7 +38,7 @@ One web page, no Excel output. A single self-contained HTML file (charts drawn o
 ## Build
 
 ```bash
-python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v10.html --version v10
+python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v11.html --version v11
 ```
 
 Python 3 standard library only. Writes the `.html` and the `.zip` next to it. For a new month, upload the new workbook, run the same command with the new file name and the next version, and keep these rules.
