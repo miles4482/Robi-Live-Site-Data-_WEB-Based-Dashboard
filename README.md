@@ -8,8 +8,8 @@ All rules are in `RULES.md`.
 
 | File | Purpose |
 |---|---|
-| `Robi_Live_Site_Aug_2026_Dashboard_v2.zip` | The dashboard. Unzip it and open the `.html` file in Chrome or Edge. Works offline |
-| `Robi_Live_Site_Aug_2026_Dashboard_v2.html` | The same page, unzipped. GitHub shows a raw `.html` as plain text, so download the zip |
+| `Robi_Live_Site_Aug_2026_Dashboard_v3.zip` | The dashboard. Unzip it and open the `.html` file in Chrome or Edge. Works offline |
+| `Robi_Live_Site_Aug_2026_Dashboard_v3.html` | The same page, unzipped. GitHub shows a raw `.html` as plain text, so download the zip |
 | `scripts/build_dashboard.py` | Reads the workbook and writes the page and the zip |
 | `scripts/dashboard_template.html` | Page layout, charts and report |
 | `RULES.md` | Filter, chart, sorting and data rules |
@@ -18,5 +18,5 @@ All rules are in `RULES.md`.
 ## Rebuild
 
 ```bash
-python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v2.html --version v2
+python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v3.html --version v3
 ```

@@ -90,6 +90,7 @@
   .nav button:disabled { opacity: .4; cursor: default; }
   .kpis { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 16px 8px; }
   .kpi { background: #fff; border: 1px solid var(--line); border-radius: 3px; padding: 3px 8px; min-width: 92px; }
+  .kpi.avg { background: #deebf7; border-color: #9dc3e6; }
   .kpi b { display: block; font-size: 13px; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .kpi span { color: var(--muted); font-size: 10px; line-height: 1.2; white-space: nowrap; }
   .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px; }
@@ -427,13 +428,29 @@ function renderReport() {
       : `${d.name} district · ${rows.length.toLocaleString()} sites`) +
     ` · ${onRows.length.toLocaleString()} on chart` +
     (series.length ? ` · ${yearLabel(first)} to ${yearLabel(last)}` : "");
-  document.getElementById("kpis").innerHTML = [
+  const districtSites = [];
+  d.thanas.forEach(t => charted(t).forEach(site => districtSites.push(site)));
+  const mean = (sites, col) => sites.length ? sites.reduce((acc, site) => acc + site[col], 0) / sites.length : null;
+  const chips = [
     isDistrictView() ? kpi("Thanas", d.thanas.length.toLocaleString()) : kpi("District", d.name),
     kpi("Sites", rows.length.toLocaleString()),
     kpi("Sites on chart", onRows.length.toLocaleString()),
     kpi("Oldest On Air Year", yearLabel(first)),
     kpi("Newest On Air Year", yearLabel(last))
-  ].join("");
+  ];
+  const avg = (label, value) => `<div class="kpi avg"><b>${value}</b><span>${label}</span></div>`;
+  if (!isDistrictView()) {
+    const thanaSites = onRows.map(row => row.site);
+    chips.push(
+      avg("Voice / site · thana (Erl)", thanaSites.length ? fmt(mean(thanaSites, VOICE), 1) : "—"),
+      avg("Data volume / site · thana (GB)", thanaSites.length ? fmt(mean(thanaSites, DATA4G), 1) : "—")
+    );
+  }
+  chips.push(
+    avg("Voice / site · district (Erl)", districtSites.length ? fmt(mean(districtSites, VOICE), 1) : "—"),
+    avg("Data volume / site · district (GB)", districtSites.length ? fmt(mean(districtSites, DATA4G), 1) : "—")
+  );
+  document.getElementById("kpis").innerHTML = chips.join("");
   const off = rows.length - onRows.length;
   document.getElementById("note").textContent =
     "Each point is one On Air Year, oldest first. The value is the average per site: the sites of that year added together, then divided by how many of those sites are on the chart." +
