@@ -21,9 +21,11 @@
     background: var(--paper);
     display: grid;
     grid-template-columns: 260px minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     height: 100vh;
   }
+  body.tab-up { grid-template-columns: minmax(0, 1fr); }
+  body.tab-up aside { display: none; }
   .topbar {
     grid-column: 1 / -1;
     display: flex;
@@ -35,8 +37,31 @@
   }
   .topbar h1 { margin: 0; font-size: 17px; }
   .topbar span { font-size: 12px; opacity: .85; }
-  aside {
+  .tabbar {
+    grid-column: 1 / -1;
     grid-row: 2;
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    padding: 8px 12px 0;
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+  }
+  .tabbar button {
+    border: 1px solid #b0b0b0;
+    border-bottom: 0;
+    background: #fff;
+    color: var(--navy);
+    font: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+  }
+  .tabbar button.on { background: #ffc000; border-color: #e0b000; color: #1a1a1a; }
+  aside {
+    grid-row: 3;
     background: #fff;
     border-right: 1px solid var(--line);
     display: flex;
@@ -74,7 +99,7 @@
   .thana.district-row.on { background: #163a5c; box-shadow: inset 3px 0 0 #ffc000; }
   .thana .name { font-weight: 700; color: var(--navy); font-size: 12.5px; line-height: 1.2; }
   .thana .meta { color: var(--muted); font-size: 10.5px; line-height: 1.2; }
-  main { grid-row: 2; min-width: 0; overflow: auto; padding-bottom: 16px; }
+  main { grid-row: 3; min-width: 0; overflow: auto; padding-bottom: 16px; }
   .head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding: 10px 16px 4px; }
   .head h2 { margin: 0; font-size: 19px; color: var(--navy); }
   .nav { display: flex; gap: 6px; }
@@ -124,13 +149,28 @@
   tr.off td { color: #8c8c8c; }
   tbody tr.hl td { background: #fff2cc; }
   .empty { padding: 40px 16px; color: var(--muted); }
+  .uptools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 0 16px 8px; }
+  .uptools input { max-width: 280px; }
+  .filters { display: flex; gap: 4px; flex-wrap: wrap; }
+  .filters button {
+    border: 1px solid #b0b0b0; background: #fff; border-radius: 12px;
+    padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer;
+  }
+  .filters button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .upreport { padding: 0 16px 16px; }
+  #upView .scroll { max-height: calc(100vh - 248px); }
+  #upTable tbody tr { cursor: pointer; }
+  #upTable tbody tr:hover td { background: #f2f7fc; }
+  #upTable tr.district-line td { background: #deebf7; font-weight: 700; }
+  td.up { color: #276221; font-weight: 700; }
+  td.down { color: #a33b32; }
   @media (max-width: 1100px) {
     .report { grid-template-columns: 1fr; }
   }
   @media (max-width: 760px) {
-    body { grid-template-columns: 1fr; grid-template-rows: auto 38vh minmax(0, 1fr); height: auto; min-height: 100vh; }
-    aside { grid-row: 2; border-right: 0; border-bottom: 1px solid var(--line); }
-    main { grid-row: 3; overflow: visible; }
+    body { grid-template-columns: 1fr; grid-template-rows: auto auto 38vh minmax(0, 1fr); height: auto; min-height: 100vh; }
+    aside { grid-row: 3; border-right: 0; border-bottom: 1px solid var(--line); }
+    main { grid-row: 4; overflow: visible; }
     .charts { grid-template-columns: 1fr; }
   }
 </style>
@@ -139,6 +179,10 @@
 <div class="topbar">
   <h1>Robi Live Site · On Air Year dashboard</h1>
   <span id="source"></span>
+</div>
+<div class="tabbar">
+  <button type="button" id="tabLive" class="on">Live Site</button>
+  <button type="button" id="tabUp">Traffic Increased</button>
 </div>
 <aside>
   <div class="tools">
@@ -152,6 +196,7 @@
   <div id="list"></div>
 </aside>
 <main>
+  <div id="liveView">
   <div class="head">
     <div>
       <h2 id="title">Select a thana</h2>
@@ -181,6 +226,31 @@
       <div class="scroll" id="siteScroll"><table id="siteTable"></table></div>
     </section>
   </div>
+  </div>
+  <div id="upView" hidden>
+    <div class="head">
+      <div>
+        <h2>Traffic Increased</h2>
+        <p class="sub" id="upNote"></p>
+      </div>
+      <div class="nav">
+        <button id="exportUp" type="button">Export</button>
+      </div>
+    </div>
+    <div class="kpis" id="upKpis"></div>
+    <div class="uptools">
+      <input id="upQ" type="search" placeholder="Search district or thana" autocomplete="off">
+      <div class="filters" id="upFilters">
+        <button type="button" data-f="either" class="on">Voice or data</button>
+        <button type="button" data-f="voice">Voice increased</button>
+        <button type="button" data-f="data">Data increased</button>
+        <button type="button" data-f="both">Both increased</button>
+      </div>
+    </div>
+    <div class="upreport">
+      <div class="scroll" id="upScroll"><table id="upTable"></table></div>
+    </div>
+  </div>
 </main>
 <script>
 const VIEW = __DATA__;
@@ -188,7 +258,7 @@ const CODE = 0, NAME = 1, YEAR = 2, DATE = 3, STATUS = 4, TYPE = 5, VOICE = 6, D
 const LINE = "#156082";
 const CHARTS = [
   { id: "voiceChart", tip: "voiceTip", key: "voice", title: "Average Total voice(Erl) vs On Air Year", yTitle: "Average Voice, Erl", unit: "Erl", label: "Average Total voice", secondary: true },
-  { id: "dataChart", tip: "dataTip", key: "data", title: "Average DAILY 4G DATA (GB) vs On Air Year", yTitle: "Average 4G Data volume, GB", unit: "GB", label: "Average Daily 4G Data volume", secondary: false },
+  { id: "dataChart", tip: "dataTip", key: "data", title: "Average DAILY 4G DATA (GB) vs On Air Year", yTitle: "Average 4G Data volume, GB", unit: "GB", label: "Average Daily 4G Data volume", secondary: true },
   { id: "cumulChart", tip: "cumulTip", key: "cumulative", title: "Cumulative site count vs On Air Year", yTitle: "Cumulative site count", unit: "sites", label: "Cumulative site count", secondary: false }
 ];
 let districtIndex = 0;
@@ -439,7 +509,7 @@ function showTips() {
     if (!point || !geom || hover >= series.length) { tip.style.display = "none"; return; }
     const countLine = spec.key === "cumulative"
       ? `<br>Added this year: <b>${point.n.toLocaleString()}</b>`
-      : `<br>${point.n.toLocaleString()} sites this year`;
+      : `<br><span style="color:#C65911">Site count this year: <b>${point.n.toLocaleString()}</b></span>`;
     tip.innerHTML = `<b>${yearLabel(point.year)}</b><br>` +
       `<span style="color:${LINE}">${spec.label}: <b>${fmt(point[spec.key], 1)} ${spec.unit}</b></span>${countLine}`;
     tip.style.display = "block";
@@ -525,7 +595,7 @@ function renderReport() {
   document.getElementById("kpis").innerHTML = chips.join("");
   const off = rows.length - onRows.length;
   document.getElementById("note").textContent =
-    "Each point is one On Air Year, oldest first. The voice and 4G lines are the average for the sites that went on air in that year: that year's total divided by that year's site count. On the voice chart, the bars and the right axis are the sites added in that year. Cumulative site count is the running site count." +
+    "Each point is one On Air Year, oldest first. The voice and 4G lines are the average for the sites that went on air in that year: that year's total divided by that year's site count. On both charts, the bars and the right axis are the sites added in that year. Cumulative site count is the running site count." +
     (off ? ` ${off} site${off === 1 ? " is" : "s are"} not on the chart (no On Air Year, or #N/A value) and ${off === 1 ? "is" : "are"} listed at the bottom of the site table.` : "");
 
   const voiceAvg = onRows.length ? voiceSum / onRows.length : 0;
@@ -739,8 +809,162 @@ document.getElementById("siteTable").addEventListener("mouseover", event => {
 document.getElementById("siteTable").addEventListener("mouseleave", () => setHover(-1));
 window.addEventListener("resize", drawAll);
 
+let upFilter = "either";
+let upQuery = "";
+function trendFor(sites) {
+  const points = buildSeries(sites.map(site => ({ site, on: true })));
+  if (points.length < 2) return null;
+  const oldest = points[0];
+  const newest = points[points.length - 1];
+  return {
+    years: points.length,
+    sites: newest.cumulative,
+    oldestYear: oldest.year,
+    newestYear: newest.year,
+    oldestN: oldest.n,
+    newestN: newest.n,
+    voiceOld: oldest.voice,
+    voiceNew: newest.voice,
+    dataOld: oldest.data,
+    dataNew: newest.data,
+    voiceUp: newest.voice > oldest.voice,
+    dataUp: newest.data > oldest.data
+  };
+}
+const INCREASED = [];
+VIEW.districts.forEach((d, dIndex) => {
+  const all = [];
+  d.thanas.forEach(t => { for (let i = 0; i < t.charted; i++) all.push(t.sites[i]); });
+  const districtTrend = trendFor(all);
+  if (districtTrend && (districtTrend.voiceUp || districtTrend.dataUp)) {
+    INCREASED.push({ districtName: d.name, thanaName: "", dIndex, tIndex: -1, ...districtTrend });
+  }
+  d.thanas.forEach((t, tIndex) => {
+    const trend = trendFor(t.sites.slice(0, t.charted));
+    if (trend && (trend.voiceUp || trend.dataUp)) {
+      INCREASED.push({ districtName: d.name, thanaName: t.name, dIndex, tIndex, ...trend });
+    }
+  });
+});
+function upMatches(row) {
+  if (upFilter === "voice" && !row.voiceUp) return false;
+  if (upFilter === "data" && !row.dataUp) return false;
+  if (upFilter === "both" && !(row.voiceUp && row.dataUp)) return false;
+  const q = upQuery.trim().toLowerCase();
+  if (!q) return true;
+  return row.districtName.toLowerCase().includes(q) || row.thanaName.toLowerCase().includes(q);
+}
+function changeText(newer, older) {
+  const diff = newer - older;
+  const sign = diff > 0 ? "+" : "";
+  const pct = older ? ` (${sign}${(diff / older * 100).toFixed(0)}%)` : "";
+  return sign + fmt(diff, 1) + pct;
+}
+function renderIncreased() {
+  const rows = INCREASED.filter(upMatches);
+  const districts = INCREASED.filter(row => !row.thanaName);
+  const thanas = INCREASED.filter(row => row.thanaName);
+  const count = (list, key) => list.filter(row => row[key]).length;
+  const both = list => list.filter(row => row.voiceUp && row.dataUp).length;
+  document.getElementById("upKpis").innerHTML = [
+    kpi("Districts", String(districts.length)),
+    kpi("Thanas", String(thanas.length)),
+    kpi("Voice increased", String(count(INCREASED, "voiceUp"))),
+    kpi("Data increased", String(count(INCREASED, "dataUp"))),
+    kpi("Both increased", String(both(INCREASED)))
+  ].join("");
+  document.getElementById("upNote").textContent =
+    "A district or thana is listed when its newest On Air Year average is higher than its oldest. " +
+    "Voice and data are checked separately. The change is newest average minus oldest average. " +
+    "Click a row to open that chart. Showing " + rows.length.toLocaleString() + " of " + INCREASED.length.toLocaleString() + ".";
+  const body = rows.map(row => {
+    const voiceCls = row.voiceUp ? "up" : "down";
+    const dataCls = row.dataUp ? "up" : "down";
+    return `<tr class="${row.thanaName ? "" : "district-line"}" data-d="${row.dIndex}" data-t="${row.tIndex}">` +
+      `<td>${esc(row.districtName)}</td><td>${row.thanaName ? esc(row.thanaName) : "District"}</td>` +
+      `<td>${yearLabel(row.oldestYear)} to ${yearLabel(row.newestYear)}</td>` +
+      `<td class="num">${row.years}</td><td class="num">${row.sites}</td>` +
+      `<td class="num">${row.oldestN}</td><td class="num">${row.newestN}</td>` +
+      `<td class="num">${fmt(row.voiceOld, 1)}</td><td class="num">${fmt(row.voiceNew, 1)}</td>` +
+      `<td class="num ${voiceCls}">${changeText(row.voiceNew, row.voiceOld)}</td>` +
+      `<td class="num">${fmt(row.dataOld, 1)}</td><td class="num">${fmt(row.dataNew, 1)}</td>` +
+      `<td class="num ${dataCls}">${changeText(row.dataNew, row.dataOld)}</td></tr>`;
+  }).join("");
+  document.getElementById("upTable").innerHTML =
+    `<thead><tr><th>District</th><th>Thana</th><th>On Air Years</th><th class="num">Years</th><th class="num">Sites on chart</th>` +
+    `<th class="num">Oldest year sites</th><th class="num">Newest year sites</th>` +
+    `<th class="num">Oldest avg voice (Erl)</th><th class="num">Newest avg voice (Erl)</th><th class="num">Voice change</th>` +
+    `<th class="num">Oldest avg data (GB)</th><th class="num">Newest avg data (GB)</th><th class="num">Data change</th></tr></thead>` +
+    `<tbody>${body || `<tr><td colspan="13">No district or thana matches.</td></tr>`}</tbody>`;
+}
+function showTab(next) {
+  const up = next === "up";
+  document.body.classList.toggle("tab-up", up);
+  document.getElementById("liveView").hidden = up;
+  document.getElementById("upView").hidden = !up;
+  document.getElementById("tabLive").classList.toggle("on", !up);
+  document.getElementById("tabUp").classList.toggle("on", up);
+  if (up) {
+    renderIncreased();
+    try { history.replaceState(null, "", "#traffic-increased"); } catch (err) {}
+  } else {
+    try {
+      const hash = isDistrictView()
+        ? "#" + encodeURIComponent(district().name)
+        : "#" + encodeURIComponent(district().name) + "/" + encodeURIComponent(thana().name);
+      history.replaceState(null, "", hash);
+    } catch (err) {}
+    requestAnimationFrame(() => requestAnimationFrame(drawAll));
+  }
+}
+function openPlace(dIndex, tIndex) {
+  const name = tIndex >= 0 ? VIEW.districts[dIndex].thanas[tIndex].name : "";
+  showTab("live");
+  selectDistrict(dIndex, name);
+}
+document.getElementById("tabLive").addEventListener("click", () => showTab("live"));
+document.getElementById("tabUp").addEventListener("click", () => showTab("up"));
+document.getElementById("upQ").addEventListener("input", event => {
+  upQuery = event.target.value;
+  renderIncreased();
+});
+document.getElementById("upFilters").addEventListener("click", event => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  upFilter = button.dataset.f;
+  document.querySelectorAll("#upFilters button").forEach(item => item.classList.toggle("on", item === button));
+  renderIncreased();
+});
+document.getElementById("upTable").addEventListener("click", event => {
+  const tr = event.target.closest("tbody tr");
+  if (!tr || tr.dataset.d == null) return;
+  openPlace(Number(tr.dataset.d), Number(tr.dataset.t));
+});
+document.getElementById("exportUp").addEventListener("click", () => {
+  const table = [[
+    "District", "Thana", "Oldest On Air Year", "Newest On Air Year", "Years", "Sites on chart",
+    "Oldest year sites", "Newest year sites",
+    "Oldest avg voice (Erl)", "Newest avg voice (Erl)", "Voice change (Erl)", "Voice increased",
+    "Oldest avg data (GB)", "Newest avg data (GB)", "Data change (GB)", "Data increased"
+  ]];
+  INCREASED.filter(upMatches).forEach(row => {
+    table.push([
+      row.districtName, row.thanaName || "District", yearLabel(row.oldestYear), yearLabel(row.newestYear),
+      row.years, row.sites, row.oldestN, row.newestN,
+      row.voiceOld.toFixed(2), row.voiceNew.toFixed(2), (row.voiceNew - row.voiceOld).toFixed(2), row.voiceUp ? "Yes" : "No",
+      row.dataOld.toFixed(2), row.dataNew.toFixed(2), (row.dataNew - row.dataOld).toFixed(2), row.dataUp ? "Yes" : "No"
+    ]);
+  });
+  downloadCsv("Robi_Live_Site_Traffic_Increased.csv", table);
+});
+
 (function start() {
   const raw = (location.hash || "").replace(/^#/, "");
+  if (decodeURIComponent(raw) === "traffic-increased") {
+    selectDistrict(0);
+    showTab("up");
+    return;
+  }
   const cut = raw.indexOf("/");
   const dName = decodeURIComponent(cut >= 0 ? raw.slice(0, cut) : raw);
   const tName = cut >= 0 ? decodeURIComponent(raw.slice(cut + 1)) : "";
