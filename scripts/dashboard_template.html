@@ -69,6 +69,9 @@
   }
   .thana:hover { background: #f2f7fc; }
   .thana.on { background: #deebf7; box-shadow: inset 3px 0 0 var(--navy); }
+  .thana.district-row { background: var(--navy); }
+  .thana.district-row .name, .thana.district-row .meta { color: #fff; }
+  .thana.district-row.on { background: #163a5c; box-shadow: inset 3px 0 0 #ffc000; }
   .thana .name { font-weight: 700; color: var(--navy); font-size: 12.5px; line-height: 1.2; }
   .thana .meta { color: var(--muted); font-size: 10.5px; line-height: 1.2; }
   main { grid-row: 2; min-width: 0; overflow: auto; padding-bottom: 16px; }
@@ -172,13 +175,14 @@ const VIEW = __DATA__;
 const CODE = 0, NAME = 1, YEAR = 2, DATE = 3, STATUS = 4, TYPE = 5, VOICE = 6, DATA4G = 7;
 const LINE = "#156082";
 const CHARTS = [
-  { id: "voiceChart", tip: "voiceTip", col: VOICE, title: "Total voice(Erl) vs On Air Year", yTitle: "Total voice, Erl", unit: "Erl", label: "Total voice" },
-  { id: "dataChart", tip: "dataTip", col: DATA4G, title: "DAILY 4G DATA (GB) vs  On Air Year", yTitle: "DAILY 4G DATA (GB)", unit: "GB", label: "DAILY 4G DATA" }
+  { id: "voiceChart", tip: "voiceTip", key: "voice", title: "Total voice(Erl) vs On Air Year", yTitle: "Avg Total voice, Erl / site", unit: "Erl", label: "Avg Total voice" },
+  { id: "dataChart", tip: "dataTip", key: "data", title: "DAILY 4G DATA (GB) vs  On Air Year", yTitle: "Avg DAILY 4G DATA, GB / site", unit: "GB", label: "Avg DAILY 4G DATA" }
 ];
 let districtIndex = 0;
-let thanaIndex = 0;
+let thanaIndex = -1;
 let query = "";
 let hover = -1;
+let series = [];
 
 const fmt = (value, digits) => typeof value === "number"
   ? value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })
@@ -187,11 +191,46 @@ const esc = text => String(text).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<":
 const yearLabel = year => year == null ? "—" : "Y " + year;
 
 function district() { return VIEW.districts[districtIndex]; }
-function thana() { return district().thanas[thanaIndex]; }
+function isDistrictView() { return thanaIndex < 0; }
+function thana() { return isDistrictView() ? null : district().thanas[thanaIndex]; }
 function charted(t) { return t.sites.slice(0, t.charted); }
 function shownThanas() {
   const q = query.trim().toLowerCase();
   return district().thanas.map((t, i) => ({ t, i })).filter(({ t }) => !q || t.name.toLowerCase().includes(q));
+}
+function scopeRows() {
+  if (isDistrictView()) {
+    const rows = [];
+    district().thanas.forEach(t => t.sites.forEach((site, i) => rows.push({ site, thana: t.name, on: i < t.charted })));
+    rows.sort((a, b) => {
+      if (a.on !== b.on) return a.on ? -1 : 1;
+      const ay = a.site[YEAR] == null ? 9999 : a.site[YEAR];
+      const by = b.site[YEAR] == null ? 9999 : b.site[YEAR];
+      if (ay !== by) return ay - by;
+      const ad = a.site[DATE] || "9999-99-99", bd = b.site[DATE] || "9999-99-99";
+      if (ad !== bd) return ad < bd ? -1 : 1;
+      return a.site[CODE] < b.site[CODE] ? -1 : a.site[CODE] > b.site[CODE] ? 1 : 0;
+    });
+    return rows;
+  }
+  const t = thana();
+  return t.sites.map((site, i) => ({ site, thana: t.name, on: i < t.charted }));
+}
+function buildSeries(rows) {
+  const map = new Map();
+  rows.forEach(row => {
+    if (!row.on) return;
+    const year = row.site[YEAR];
+    const acc = map.get(year) || { n: 0, voice: 0, data: 0 };
+    acc.n += 1;
+    acc.voice += row.site[VOICE];
+    acc.data += row.site[DATA4G];
+    map.set(year, acc);
+  });
+  return [...map.keys()].sort((a, b) => a - b).map(year => {
+    const acc = map.get(year);
+    return { year, n: acc.n, voice: acc.voice / acc.n, data: acc.data / acc.n };
+  });
 }
 
 function niceStep(max) {
@@ -233,9 +272,9 @@ function drawChart(spec) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
 
-  const points = charted(thana());
-  const values = points.map(site => site[spec.col]);
-  const pad = { l: 72, r: 18, t: 46, b: 84 };
+  const points = series;
+  const values = points.map(point => point[spec.key]);
+  const pad = { l: 78, r: 18, t: 46, b: 72 };
   const plotW = width - pad.l - pad.r, plotH = height - pad.t - pad.b;
   const peak = values.length ? Math.max(...values) : 0;
   const step = niceStep(peak * 1.05);
@@ -284,7 +323,7 @@ function drawChart(spec) {
       ctx.save();
       ctx.translate(xAt(i), axisY + 6);
       ctx.rotate(-Math.PI / 2);
-      ctx.fillText(yearLabel(points[i][YEAR]), 0, 0);
+      ctx.fillText(yearLabel(points[i].year), 0, 0);
       ctx.restore();
     }
   }
@@ -295,7 +334,7 @@ function drawChart(spec) {
 
   if (!n) {
     ctx.textBaseline = "middle";
-    ctx.fillText("No site with an On Air Year and a value in this thana", pad.l + plotW / 2, pad.t + plotH / 2);
+    ctx.fillText("No site with an On Air Year and a value", pad.l + plotW / 2, pad.t + plotH / 2);
     canvas._geom = null;
     return;
   }
@@ -305,10 +344,8 @@ function drawChart(spec) {
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   if (n > 1) { ctx.beginPath(); monotone(ctx, xs, ys); ctx.stroke(); }
-  if (n <= 25) {
-    ctx.fillStyle = LINE;
-    xs.forEach((x, i) => { ctx.beginPath(); ctx.arc(x, ys[i], 3.2, 0, Math.PI * 2); ctx.fill(); });
-  }
+  ctx.fillStyle = LINE;
+  xs.forEach((x, i) => { ctx.beginPath(); ctx.arc(x, ys[i], 3.4, 0, Math.PI * 2); ctx.fill(); });
   if (hover >= 0 && hover < n) {
     ctx.strokeStyle = "rgba(0,0,0,.25)";
     ctx.lineWidth = 1;
@@ -326,15 +363,13 @@ function drawChart(spec) {
 function drawAll() { CHARTS.forEach(drawChart); }
 
 function showTips() {
-  const points = charted(thana());
+  const point = hover >= 0 ? series[hover] : null;
   CHARTS.forEach(spec => {
     const tip = document.getElementById(spec.tip);
     const geom = document.getElementById(spec.id)._geom;
-    if (hover < 0 || !geom || hover >= points.length) { tip.style.display = "none"; return; }
-    const site = points[hover];
-    tip.innerHTML = `<b>${hover + 1}. ${esc(site[CODE])}</b> · ${yearLabel(site[YEAR])}<br>` +
-      `On Air Date ${esc(site[DATE] || "—")}<br>` +
-      `<span style="color:${LINE}">${spec.label}: <b>${fmt(site[spec.col], 2)} ${spec.unit}</b></span>`;
+    if (!point || !geom || hover >= series.length) { tip.style.display = "none"; return; }
+    tip.innerHTML = `<b>${yearLabel(point.year)}</b> · ${point.n.toLocaleString()} site${point.n === 1 ? "" : "s"}<br>` +
+      `<span style="color:${LINE}">${spec.label}: <b>${fmt(point[spec.key], 1)} ${spec.unit} / site</b></span>`;
     tip.style.display = "block";
     const box = tip.parentElement.getBoundingClientRect();
     const tipW = tip.offsetWidth, tipH = tip.offsetHeight;
@@ -345,7 +380,9 @@ function showTips() {
     tip.style.left = Math.max(4, left) + "px";
     tip.style.top = Math.max(4, top) + "px";
   });
-  document.querySelectorAll("#siteTable tbody tr").forEach(tr => tr.classList.toggle("hl", Number(tr.dataset.i) === hover));
+  const year = point ? point.year : null;
+  document.querySelectorAll("#yearTable tbody tr").forEach(tr => tr.classList.toggle("hl", Number(tr.dataset.i) === hover));
+  document.querySelectorAll("#siteTable tbody tr").forEach(tr => tr.classList.toggle("hl", year != null && Number(tr.dataset.year) === year));
 }
 
 function setHover(index) {
@@ -374,54 +411,53 @@ function kpi(label, value) {
 }
 
 function renderReport() {
-  const t = thana();
-  const points = charted(t);
-  const sum = col => points.reduce((acc, site) => acc + site[col], 0);
-  const voice = sum(VOICE), data = sum(DATA4G);
-  const years = points.map(site => site[YEAR]);
-  const first = years.length ? years[0] : null, last = years.length ? years[years.length - 1] : null;
-  document.getElementById("title").textContent = t.name;
+  const d = district();
+  const rows = scopeRows();
+  const onRows = rows.filter(row => row.on);
+  series = buildSeries(rows);
+  const first = series.length ? series[0].year : null;
+  const last = series.length ? series[series.length - 1].year : null;
+  const voiceAvg = onRows.length ? onRows.reduce((acc, row) => acc + row.site[VOICE], 0) / onRows.length : null;
+  const dataAvg = onRows.length ? onRows.reduce((acc, row) => acc + row.site[DATA4G], 0) / onRows.length : null;
+  const place = isDistrictView() ? d.name + " district" : thana().name;
+  document.getElementById("title").textContent = place;
   document.getElementById("caption").textContent =
-    `${district().name} district · ${t.sites.length.toLocaleString()} sites · ${points.length.toLocaleString()} on chart` +
-    (years.length ? ` · ${yearLabel(first)} to ${yearLabel(last)}` : "");
+    (isDistrictView()
+      ? `${d.thanas.length} thanas · ${rows.length.toLocaleString()} sites`
+      : `${d.name} district · ${rows.length.toLocaleString()} sites`) +
+    ` · ${onRows.length.toLocaleString()} on chart` +
+    (series.length ? ` · ${yearLabel(first)} to ${yearLabel(last)}` : "");
   document.getElementById("kpis").innerHTML = [
-    kpi("Sites in thana", t.sites.length.toLocaleString()),
-    kpi("Sites on chart", points.length.toLocaleString()),
+    isDistrictView() ? kpi("Thanas", d.thanas.length.toLocaleString()) : kpi("District", d.name),
+    kpi("Sites", rows.length.toLocaleString()),
+    kpi("Sites on chart", onRows.length.toLocaleString()),
     kpi("Oldest On Air Year", yearLabel(first)),
-    kpi("Newest On Air Year", yearLabel(last)),
-    kpi("Total voice, sum (Erl)", fmt(voice, 1)),
-    kpi("Total voice, avg / site (Erl)", points.length ? fmt(voice / points.length, 1) : "—"),
-    kpi("DAILY 4G DATA, sum (GB)", fmt(data, 1)),
-    kpi("DAILY 4G DATA, avg / site (GB)", points.length ? fmt(data / points.length, 1) : "—")
+    kpi("Newest On Air Year", yearLabel(last))
   ].join("");
-  const off = t.sites.length - points.length;
+  const off = rows.length - onRows.length;
   document.getElementById("note").textContent =
-    "Each point is one site. Sites are sorted by On Air Year, oldest first; within the same year by On Air Date, then Site Code." +
+    "Each point is one On Air Year, oldest first. The value is the average per site: the sites of that year added together, then divided by how many of those sites are on the chart." +
     (off ? ` ${off} site${off === 1 ? " is" : "s are"} not on the chart (no On Air Year, or #N/A value) and ${off === 1 ? "is" : "are"} listed at the bottom of the site table.` : "");
 
-  const byYear = new Map();
-  points.forEach(site => {
-    const row = byYear.get(site[YEAR]) || { n: 0, voice: 0, data: 0 };
-    row.n += 1; row.voice += site[VOICE]; row.data += site[DATA4G];
-    byYear.set(site[YEAR], row);
-  });
-  const yearRows = [...byYear.entries()].map(([year, row]) =>
-    `<tr><td>${yearLabel(year)}</td><td class="num">${row.n}</td><td class="num">${fmt(row.voice, 1)}</td><td class="num">${fmt(row.data, 1)}</td></tr>`).join("");
+  const yearRows = series.map((point, i) =>
+    `<tr data-i="${i}"><td>${yearLabel(point.year)}</td><td class="num">${point.n}</td><td class="num">${fmt(point.voice, 1)}</td><td class="num">${fmt(point.data, 1)}</td></tr>`).join("");
   document.getElementById("yearTable").innerHTML =
-    `<thead><tr><th>On Air Year</th><th class="num">Sites</th><th class="num">Total voice (Erl)</th><th class="num">DAILY 4G DATA (GB)</th></tr></thead>` +
+    `<thead><tr><th>On Air Year</th><th class="num">Sites</th><th class="num">Total voice, avg / site (Erl)</th><th class="num">DAILY 4G DATA, avg / site (GB)</th></tr></thead>` +
     `<tbody>${yearRows}</tbody>` +
-    (points.length ? `<tfoot><tr class="total"><td>Total</td><td class="num">${points.length}</td><td class="num">${fmt(voice, 1)}</td><td class="num">${fmt(data, 1)}</td></tr></tfoot>` : "");
+    (onRows.length ? `<tfoot><tr class="total"><td>Avg / site</td><td class="num">${onRows.length}</td><td class="num">${fmt(voiceAvg, 1)}</td><td class="num">${fmt(dataAvg, 1)}</td></tr></tfoot>` : "");
 
-  document.getElementById("siteHead").textContent = `Sites in ${t.name} (${t.sites.length})`;
-  const siteRows = t.sites.map((site, i) => {
-    const on = i < t.charted;
-    return `<tr data-i="${on ? i : -1}" class="${on ? "" : "off"}">` +
-      `<td class="num">${on ? i + 1 : "—"}</td><td>${esc(site[CODE])}</td><td class="site-name" title="${esc(site[NAME])}">${esc(site[NAME])}</td>` +
+  document.getElementById("siteHead").textContent = `Sites in ${place} (${rows.length.toLocaleString()})`;
+  const thanaHead = isDistrictView() ? "<th>Thana</th>" : "";
+  const siteRows = rows.map((row, i) => {
+    const site = row.site;
+    const thanaCell = isDistrictView() ? `<td>${esc(row.thana)}</td>` : "";
+    return `<tr data-year="${row.on ? site[YEAR] : ""}" class="${row.on ? "" : "off"}">` +
+      `<td class="num">${row.on ? i + 1 : "—"}</td><td>${esc(site[CODE])}</td><td class="site-name" title="${esc(site[NAME])}">${esc(site[NAME])}</td>${thanaCell}` +
       `<td>${yearLabel(site[YEAR])}</td><td>${esc(site[DATE] || "—")}</td><td>${esc(site[STATUS])}</td><td>${esc(site[TYPE])}</td>` +
       `<td class="num">${fmt(site[VOICE], 2)}</td><td class="num">${fmt(site[DATA4G], 2)}</td></tr>`;
   }).join("");
   document.getElementById("siteTable").innerHTML =
-    `<thead><tr><th class="num">No.</th><th>Site Code</th><th>Site Name</th><th>On Air Year</th><th>On Air Date</th>` +
+    `<thead><tr><th class="num">No.</th><th>Site Code</th><th>Site Name</th>${thanaHead}<th>On Air Year</th><th>On Air Date</th>` +
     `<th>Site Status</th><th>Site Type</th><th class="num">Total voice (Erl)</th><th class="num">DAILY 4G DATA (GB)</th></tr></thead>` +
     `<tbody>${siteRows}</tbody>`;
   document.getElementById("siteScroll").scrollTop = 0;
@@ -431,27 +467,37 @@ function renderList() {
   const rows = shownThanas();
   const d = district();
   const siteCount = d.thanas.reduce((acc, t) => acc + t.sites.length, 0);
+  const years = [];
+  d.thanas.forEach(t => charted(t).forEach(site => years.push(site[YEAR])));
+  years.sort((a, b) => a - b);
+  const span = years.length ? ` · ${yearLabel(years[0])} to ${yearLabel(years[years.length - 1])}` : "";
   document.getElementById("listInfo").textContent =
     `${d.thanas.length} thanas · ${siteCount.toLocaleString()} sites` + (query.trim() ? ` · ${rows.length} match` : "");
-  document.getElementById("list").innerHTML = rows.length ? rows.map(({ t, i }) => {
-    const years = charted(t).map(site => site[YEAR]);
-    const span = years.length ? ` · ${yearLabel(years[0])} to ${yearLabel(years[years.length - 1])}` : "";
+  const districtButton = `<button type="button" class="thana district-row ${isDistrictView() ? "on" : ""}" data-i="-1">` +
+    `<div class="name">${esc(d.name)} district</div><div class="meta">${siteCount.toLocaleString()} sites · ${d.thanas.length} thanas${span}</div></button>`;
+  const thanaButtons = rows.map(({ t, i }) => {
+    const tYears = charted(t).map(site => site[YEAR]);
+    const tSpan = tYears.length ? ` · ${yearLabel(tYears[0])} to ${yearLabel(tYears[tYears.length - 1])}` : "";
     return `<button type="button" class="thana ${i === thanaIndex ? "on" : ""}" data-i="${i}">` +
-      `<div class="name">${i + 1}. ${esc(t.name)}</div><div class="meta">${t.sites.length} site${t.sites.length === 1 ? "" : "s"}${span}</div></button>`;
-  }).join("") : '<p class="sub" style="padding:10px 8px">No thana matches.</p>';
+      `<div class="name">${i + 1}. ${esc(t.name)}</div><div class="meta">${t.sites.length} site${t.sites.length === 1 ? "" : "s"}${tSpan}</div></button>`;
+  }).join("");
+  document.getElementById("list").innerHTML = districtButton + (thanaButtons || (query.trim() ? '<p class="sub" style="padding:10px 8px">No thana matches.</p>' : ""));
   const active = document.querySelector(".thana.on");
   if (active) active.scrollIntoView({ block: "nearest" });
 }
 
+function navItems() {
+  return [-1].concat(shownThanas().map(row => row.i));
+}
 function updateNav() {
-  const rows = shownThanas();
-  const pos = rows.findIndex(row => row.i === thanaIndex);
+  const items = navItems();
+  const pos = items.indexOf(thanaIndex);
   document.getElementById("prev").disabled = pos <= 0;
-  document.getElementById("next").disabled = pos < 0 || pos >= rows.length - 1;
+  document.getElementById("next").disabled = pos < 0 || pos >= items.length - 1;
 }
 
 function selectThana(index) {
-  thanaIndex = Math.max(0, Math.min(district().thanas.length - 1, index));
+  thanaIndex = index < 0 ? -1 : Math.max(0, Math.min(district().thanas.length - 1, index));
   hover = -1;
   renderList();
   renderReport();
@@ -459,7 +505,10 @@ function selectThana(index) {
   showTips();
   updateNav();
   try {
-    history.replaceState(null, "", "#" + encodeURIComponent(district().name) + "/" + encodeURIComponent(thana().name));
+    const hash = isDistrictView()
+      ? "#" + encodeURIComponent(district().name)
+      : "#" + encodeURIComponent(district().name) + "/" + encodeURIComponent(thana().name);
+    history.replaceState(null, "", hash);
   } catch (err) {}
 }
 
@@ -469,15 +518,15 @@ function selectDistrict(index, thanaName) {
   document.getElementById("q").value = "";
   document.getElementById("district").value = String(index);
   const found = thanaName ? district().thanas.findIndex(t => t.name === thanaName) : -1;
-  selectThana(found >= 0 ? found : 0);
+  selectThana(found >= 0 ? found : -1);
 }
 
 function step(delta) {
-  const rows = shownThanas();
-  let pos = rows.findIndex(row => row.i === thanaIndex);
+  const items = navItems();
+  let pos = items.indexOf(thanaIndex);
   if (pos < 0) pos = 0;
-  pos = Math.max(0, Math.min(rows.length - 1, pos + delta));
-  if (rows[pos]) selectThana(rows[pos].i);
+  pos = Math.max(0, Math.min(items.length - 1, pos + delta));
+  selectThana(items[pos]);
 }
 
 const totalSites = VIEW.districts.reduce((acc, d) => acc + d.thanas.reduce((a, t) => a + t.sites.length, 0), 0);
@@ -497,7 +546,7 @@ document.getElementById("q").addEventListener("input", event => {
 document.getElementById("q").addEventListener("keydown", event => {
   if (event.key !== "Enter") return;
   const rows = shownThanas();
-  if (rows.length) selectThana(rows[0].i);
+  selectThana(rows.length ? rows[0].i : -1);
 });
 document.getElementById("list").addEventListener("click", event => {
   const button = event.target.closest(".thana");
@@ -510,9 +559,15 @@ CHARTS.forEach(spec => {
   canvas.addEventListener("mousemove", onMove);
   canvas.addEventListener("mouseleave", () => setHover(-1));
 });
+document.getElementById("yearTable").addEventListener("mouseover", event => {
+  const tr = event.target.closest("tbody tr");
+  if (tr) setHover(Number(tr.dataset.i));
+});
 document.getElementById("siteTable").addEventListener("mouseover", event => {
   const tr = event.target.closest("tbody tr");
-  if (tr && Number(tr.dataset.i) >= 0) setHover(Number(tr.dataset.i));
+  if (!tr || tr.dataset.year === "") return;
+  const index = series.findIndex(point => point.year === Number(tr.dataset.year));
+  if (index >= 0) setHover(index);
 });
 document.getElementById("siteTable").addEventListener("mouseleave", () => setHover(-1));
 window.addEventListener("resize", drawAll);

@@ -1,4 +1,4 @@
-# Dashboard rules — v1
+# Dashboard rules — v2
 
 Source: `Robi Live Site_Aug_2026.xlsx`, first sheet. Columns are found by their header text on row 1, not by letter.
 
@@ -6,19 +6,20 @@ Source: `Robi Live Site_Aug_2026.xlsx`, first sheet. Columns are found by their 
 
 One web page, no Excel output. A single self-contained HTML file (charts drawn on canvas, no internet libraries), delivered as a zip because GitHub shows a raw `.html` as plain text.
 
-- Left panel: **District** filter (column `District`, A to Z, with site counts). Choosing a district lists every **Thana** of that district (column `Thana`, A to Z, numbered, with site count and On Air Year span). A search box narrows the thana list. Previous / Next step through the listed thanas.
-- Clicking a thana draws **two charts beside each other** in one window:
-  1. `On Air Year` (X) vs `Total voice` (Y), titled `Total voice(Erl) vs On Air Year`, Y axis `Total voice, Erl`.
-  2. `On Air Year` (X) vs `DAILY 4G DATA (GB)` (Y), titled `DAILY 4G DATA (GB) vs  On Air Year`, Y axis `DAILY 4G DATA (GB)`.
-- Report under the charts: KPI chips (sites, sites on chart, oldest and newest year, sum and average per site of both measures), a **By On Air Year** table (sites and sums per year), and the **site table** of that thana.
-- The URL hash is `#District/Thana`, so a thana view can be bookmarked or shared.
+- Left panel: **District** filter (column `District`, A to Z, with site counts). Choosing a district opens the **district chart** and lists that district at the top of the thana list (navy row), then every **Thana** (column `Thana`, A to Z, numbered). Click the district row for the district chart, or a thana for that thana. A search box narrows the thanas; the district row stays pinned. Previous / Next steps through the district row and the listed thanas.
+- Two charts beside each other:
+  1. `On Air Year` (X) vs `Total voice` (Y), titled `Total voice(Erl) vs On Air Year`, Y axis `Avg Total voice, Erl / site`.
+  2. `On Air Year` (X) vs `DAILY 4G DATA (GB)` (Y), titled `DAILY 4G DATA (GB) vs  On Air Year`, Y axis `Avg DAILY 4G DATA, GB / site`.
+- Report under the charts: site-count chips only (no voice or data totals), a **By On Air Year** table of averages per site, and the site table. The site table keeps each site's own voice and data.
+- The URL hash is `#District` for the district chart and `#District/Thana` for a thana.
 
 ## Chart rules
 
-- **One point per site**, the same as the reference Excel chart. The X label of each point is that site's `On Air Year` (for example `Y 2015`), so a year repeats once per site.
-- **Oldest first (A to Z).** Sites are sorted by `On Air Year` ascending. Within the same year, by `On Air Date` ascending, then by `Site Code`.
-- Both charts use the same site order, so point *n* is the same site in both charts and is row *n* of the site table. Hovering a point (or a table row) highlights that site in both charts.
-- Line: smoothed, dark teal `#156082`, 3 px, matching the reference. Smoothing never overshoots the data (monotone curve), so it does not invent negative or peak values. Markers are drawn only when a thana has 25 sites or fewer. When there are too many sites to label every point, X labels are thinned so they stay readable; every point is still plotted.
+- **One point per On Air Year.** The value is the average per site for that year: add the sites on air in that year, then divide by how many of those sites are on the chart. The same rule is used for Total voice and for DAILY 4G DATA. A sum is not plotted.
+- **Oldest first (A to Z).** Years run 2013, 2014, 2015, and so on.
+- Both charts use the same years. Hovering a point highlights that year in the year table and the sites of that year in the site table.
+- The year table shows Sites, Total voice avg / site (Erl), and DAILY 4G DATA avg / site (GB). The last row is **Avg / site** for the whole thana or district (sum of the sites on the chart, divided by that site count). Voice and data sums are not shown.
+- Line: smoothed, dark teal `#156082`, 3 px, with a marker on every year. Smoothing never overshoots the data (monotone curve), so it does not invent negative or peak values. Every year is labeled.
 - Y axis starts at 0, about five gridlines, labels with one decimal (`2500.0`).
 
 ## Data handling
@@ -34,7 +35,7 @@ One web page, no Excel output. A single self-contained HTML file (charts drawn o
 ## Build
 
 ```bash
-python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v1.html --version v1
+python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v2.html --version v2
 ```
 
 Python 3 standard library only. Writes the `.html` and the `.zip` next to it. For a new month, upload the new workbook, run the same command with the new file name and the next version, and keep these rules.
