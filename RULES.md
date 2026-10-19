@@ -1,4 +1,4 @@
-# Dashboard rules — v9
+# Dashboard rules — v10
 
 Source: `Robi Live Site_Aug_2026.xlsx`, first sheet. Columns are found by their header text on row 1, not by letter.
 
@@ -38,7 +38,7 @@ One web page, no Excel output. A single self-contained HTML file (charts drawn o
 ## Build
 
 ```bash
-python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v9.html --version v9
+python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v10.html --version v10
 ```
 
 Python 3 standard library only. Writes the `.html` and the `.zip` next to it. For a new month, upload the new workbook, run the same command with the new file name and the next version, and keep these rules.
