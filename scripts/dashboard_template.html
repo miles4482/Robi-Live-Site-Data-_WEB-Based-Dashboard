@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robi Live Site · On Air Year dashboard __VERSION__</title>
+<style>
+  :root {
+    --navy: #1F4E79;
+    --teal: #156082;
+    --ink: #1a1a1a;
+    --muted: #595959;
+    --line: #d9d9d9;
+    --paper: #f4f6f8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: Calibri, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    height: 100vh;
+  }
+  body.tab-up { grid-template-columns: minmax(0, 1fr); }
+  body.tab-up aside { display: none; }
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 8px 14px;
+    background: var(--navy);
+    color: #fff;
+  }
+  .topbar h1 { margin: 0; font-size: 17px; }
+  .topbar span { font-size: 12px; opacity: .85; }
+  .tabbar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    padding: 8px 12px 0;
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+  }
+  .tabbar button {
+    border: 1px solid #b0b0b0;
+    border-bottom: 0;
+    background: #fff;
+    color: var(--navy);
+    font: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+  }
+  .tabbar button.on { background: #ffc000; border-color: #e0b000; color: #1a1a1a; }
+  aside {
+    grid-row: 3;
+    background: #fff;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .tools { padding: 8px 8px 6px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid var(--line); }
+  .tools label { font-size: 11px; font-weight: 700; color: var(--navy); margin-top: 2px; }
+  select, input[type="search"] {
+    width: 100%;
+    border: 1px solid #b0b0b0;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font: inherit;
+    font-size: 12px;
+    background: #fff;
+  }
+  .sub { margin: 2px 0 0; color: var(--muted); font-size: 11px; line-height: 1.25; }
+  #list { overflow: auto; flex: 1; }
+  .thana {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid #eee;
+    background: #fff;
+    padding: 4px 8px;
+    cursor: pointer;
+    font: inherit;
+  }
+  .thana:hover { background: #f2f7fc; }
+  .thana.on { background: #deebf7; box-shadow: inset 3px 0 0 var(--navy); }
+  .thana.district-row { background: var(--navy); }
+  .thana.district-row .name, .thana.district-row .meta { color: #fff; }
+  .thana.district-row.on { background: #163a5c; box-shadow: inset 3px 0 0 #ffc000; }
+  .thana .name { font-weight: 700; color: var(--navy); font-size: 12.5px; line-height: 1.2; }
+  .thana .meta { color: var(--muted); font-size: 10.5px; line-height: 1.2; }
+  main { grid-row: 3; min-width: 0; overflow: auto; padding-bottom: 16px; }
+  .head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding: 10px 16px 4px; }
+  .head h2 { margin: 0; font-size: 19px; color: var(--navy); }
+  .nav { display: flex; gap: 6px; }
+  .nav button {
+    border: 1px solid #b0b0b0;
+    background: #fff;
+    border-radius: 12px;
+    padding: 4px 12px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .nav button:disabled { opacity: .4; cursor: default; }
+  .kpis { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 16px 8px; }
+  .kpi { background: #fff; border: 1px solid var(--line); border-radius: 3px; padding: 3px 8px; min-width: 92px; }
+  .kpi.avg { background: #deebf7; border-color: #9dc3e6; }
+  .kpi b { display: block; font-size: 13px; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .kpi span { color: var(--muted); font-size: 10px; line-height: 1.2; white-space: nowrap; }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px; }
+  .charts.cumul { grid-template-columns: 1fr; margin-top: 12px; }
+  .charts.cumul .card { height: 360px; }
+  .card { background: #fff; border: 1px solid #c8c8c8; position: relative; height: 450px; min-width: 0; }
+  .card canvas { width: 100%; height: 100%; display: block; }
+  .tip {
+    position: absolute; display: none; pointer-events: none; z-index: 2;
+    background: #fff; border: 1px solid #b0b0b0; border-radius: 4px;
+    padding: 5px 8px; font-size: 12px; line-height: 1.35; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    white-space: nowrap;
+  }
+  .note { padding: 6px 16px 0; color: var(--muted); font-size: 11.5px; }
+  .report { display: grid; grid-template-columns: minmax(460px, 560px) minmax(0, 1fr); gap: 12px; padding: 12px 16px 0; align-items: start; }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .panel h3 { margin: 0; padding: 4px 8px; color: #fff; font-size: 12px; background: var(--navy); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .panel.sites h3 { background: var(--teal); }
+  .panel h3 button {
+    border: 0; background: #fff; color: var(--navy); font: inherit; font-size: 11px; font-weight: 700;
+    padding: 1px 10px; border-radius: 10px; cursor: pointer;
+  }
+  .panel h3 button:hover { background: #fff2cc; }
+  .scroll { max-height: 420px; overflow: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  th, td { padding: 3px 7px; border-bottom: 1px solid #eee; text-align: left; white-space: nowrap; }
+  td.site-name { max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+  th { position: sticky; top: 0; background: #f2f2f2; color: #333; font-weight: 700; z-index: 1; white-space: normal; vertical-align: bottom; line-height: 1.15; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.total td { font-weight: 700; background: #fafafa; border-top: 1px solid var(--line); }
+  tr.off td { color: #8c8c8c; }
+  tbody tr.hl td { background: #fff2cc; }
+  .empty { padding: 40px 16px; color: var(--muted); }
+  .uptools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 0 16px 8px; }
+  .uptools input { max-width: 280px; }
+  .filters { display: flex; gap: 4px; flex-wrap: wrap; }
+  .filters button {
+    border: 1px solid #b0b0b0; background: #fff; border-radius: 12px;
+    padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer;
+  }
+  .filters button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .upreport { padding: 0 16px 16px; }
+  #upView .scroll { max-height: calc(100vh - 248px); }
+  #upTable tbody tr { cursor: pointer; }
+  #upTable tbody tr:hover td { background: #f2f7fc; }
+  #upTable tr.district-line td { background: #deebf7; font-weight: 700; }
+  td.up { color: #276221; font-weight: 700; }
+  td.down { color: #a33b32; }
+  @media (max-width: 1100px) {
+    .report { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 760px) {
+    body { grid-template-columns: 1fr; grid-template-rows: auto auto 38vh minmax(0, 1fr); height: auto; min-height: 100vh; }
+    aside { grid-row: 3; border-right: 0; border-bottom: 1px solid var(--line); }
+    main { grid-row: 4; overflow: visible; }
+    .charts { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>Robi Live Site · On Air Year dashboard</h1>
+  <span id="source"></span>
+</div>
+<div class="tabbar">
+  <button type="button" id="tabLive" class="on">Live Site</button>
+  <button type="button" id="tabUp">Traffic Increased</button>
+</div>
+<aside>
+  <div class="tools">
+    <label for="districtQ">District</label>
+    <input id="districtQ" type="search" placeholder="Search district" autocomplete="off">
+    <select id="district" aria-label="District"></select>
+    <label for="q">Thana</label>
+    <input id="q" type="search" placeholder="Search thana" autocomplete="off">
+    <p class="sub" id="listInfo"></p>
+  </div>
+  <div id="list"></div>
+</aside>
+<main>
+  <div id="liveView">
+  <div class="head">
+    <div>
+      <h2 id="title">Select a thana</h2>
+      <p class="sub" id="caption"></p>
+    </div>
+    <div class="nav">
+      <button id="prev" type="button">Previous</button>
+      <button id="next" type="button">Next</button>
+    </div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="charts">
+    <div class="card"><canvas id="voiceChart"></canvas><div class="tip" id="voiceTip"></div></div>
+    <div class="card"><canvas id="dataChart"></canvas><div class="tip" id="dataTip"></div></div>
+  </div>
+  <div class="charts cumul">
+    <div class="card"><canvas id="cumulChart"></canvas><div class="tip" id="cumulTip"></div></div>
+  </div>
+  <p class="note" id="note"></p>
+  <div class="report">
+    <section class="panel">
+      <h3><span>By On Air Year</span><button type="button" id="exportYear">Export</button></h3>
+      <div class="scroll"><table id="yearTable"></table></div>
+    </section>
+    <section class="panel sites">
+      <h3><span id="siteHead">Sites</span><button type="button" id="exportSites">Export</button></h3>
+      <div class="scroll" id="siteScroll"><table id="siteTable"></table></div>
+    </section>
+  </div>
+  </div>
+  <div id="upView" hidden>
+    <div class="head">
+      <div>
+        <h2>Traffic Increased</h2>
+        <p class="sub" id="upNote"></p>
+      </div>
+      <div class="nav">
+        <button id="exportUp" type="button">Export</button>
+      </div>
+    </div>
+    <div class="kpis" id="upKpis"></div>
+    <div class="uptools">
+      <input id="upQ" type="search" placeholder="Search district or thana" autocomplete="off">
+      <div class="filters" id="upFilters">
+        <button type="button" data-f="either" class="on">Voice or data</button>
+        <button type="button" data-f="voice">Voice increased</button>
+        <button type="button" data-f="data">Data increased</button>
+        <button type="button" data-f="both">Both increased</button>
+      </div>
+    </div>
+    <div class="upreport">
+      <div class="scroll" id="upScroll"><table id="upTable"></table></div>
+    </div>
+  </div>
+</main>
+<script>
+const VIEW = __DATA__;
+const CODE = 0, NAME = 1, YEAR = 2, DATE = 3, STATUS = 4, TYPE = 5, VOICE = 6, DATA4G = 7;
+const LINE = "#156082";
+const CHARTS = [
+  { id: "voiceChart", tip: "voiceTip", key: "voice", title: "Average Total voice(Erl) vs On Air Year", yTitle: "Average Voice, Erl", unit: "Erl", label: "Average Total voice", secondary: true },
+  { id: "dataChart", tip: "dataTip", key: "data", title: "Average DAILY 4G DATA (GB) vs On Air Year", yTitle: "Average 4G Data volume, GB", unit: "GB", label: "Average Daily 4G Data volume", secondary: true },
+  { id: "cumulChart", tip: "cumulTip", key: "cumulative", title: "Cumulative site count vs On Air Year", yTitle: "Cumulative site count", unit: "sites", label: "Cumulative site count", secondary: false }
+];
+let districtIndex = 0;
+let districtQuery = "";
+let thanaIndex = -1;
+let query = "";
+let hover = -1;
+let series = [];
+let exportRows = [];
+
+const fmt = (value, digits) => typeof value === "number"
+  ? value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  : (value == null || value === "" ? "—" : String(value));
+const esc = text => String(text).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+const yearLabel = year => year == null ? "—" : "Y " + year;
+
+function district() { return VIEW.districts[districtIndex]; }
+function isDistrictView() { return thanaIndex < 0; }
+function thana() { return isDistrictView() ? null : district().thanas[thanaIndex]; }
+function charted(t) { return t.sites.slice(0, t.charted); }
+function shownThanas() {
+  const q = query.trim().toLowerCase();
+  return district().thanas.map((t, i) => ({ t, i })).filter(({ t }) => !q || t.name.toLowerCase().includes(q));
+}
+function scopeRows() {
+  if (isDistrictView()) {
+    const rows = [];
+    district().thanas.forEach(t => t.sites.forEach((site, i) => rows.push({ site, thana: t.name, on: i < t.charted })));
+    rows.sort((a, b) => {
+      if (a.on !== b.on) return a.on ? -1 : 1;
+      const ay = a.site[YEAR] == null ? 9999 : a.site[YEAR];
+      const by = b.site[YEAR] == null ? 9999 : b.site[YEAR];
+      if (ay !== by) return ay - by;
+      const ad = a.site[DATE] || "9999-99-99", bd = b.site[DATE] || "9999-99-99";
+      if (ad !== bd) return ad < bd ? -1 : 1;
+      return a.site[CODE] < b.site[CODE] ? -1 : a.site[CODE] > b.site[CODE] ? 1 : 0;
+    });
+    return rows;
+  }
+  const t = thana();
+  return t.sites.map((site, i) => ({ site, thana: t.name, on: i < t.charted }));
+}
+function buildSeries(rows) {
+  const map = new Map();
+  rows.forEach(row => {
+    if (!row.on) return;
+    const year = row.site[YEAR];
+    const acc = map.get(year) || { n: 0, voice: 0, data: 0 };
+    acc.n += 1;
+    acc.voice += row.site[VOICE];
+    acc.data += row.site[DATA4G];
+    map.set(year, acc);
+  });
+  let running = 0;
+  return [...map.keys()].sort((a, b) => a - b).map(year => {
+    const acc = map.get(year);
+    running += acc.n;
+    return { year, n: acc.n, voice: acc.voice / acc.n, data: acc.data / acc.n, cumulative: running };
+  });
+}
+
+function niceStep(max) {
+  if (!(max > 0)) return 1;
+  const raw = max / 5;
+  const power = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / power;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * power;
+}
+
+function monotone(ctx, xs, ys) {
+  const n = xs.length;
+  ctx.moveTo(xs[0], ys[0]);
+  if (n === 2) { ctx.lineTo(xs[1], ys[1]); return; }
+  const dx = [], m = [], t = new Array(n);
+  for (let i = 0; i < n - 1; i++) { dx[i] = xs[i + 1] - xs[i]; m[i] = (ys[i + 1] - ys[i]) / dx[i]; }
+  t[0] = m[0];
+  t[n - 1] = m[n - 2];
+  for (let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (m[i] === 0) { t[i] = 0; t[i + 1] = 0; continue; }
+    const a = t[i] / m[i], b = t[i + 1] / m[i], s = a * a + b * b;
+    if (s > 9) { const k = 3 / Math.sqrt(s); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; }
+  }
+  for (let i = 0; i < n - 1; i++) {
+    const h = dx[i] / 3;
+    ctx.bezierCurveTo(xs[i] + h, ys[i] + t[i] * h, xs[i + 1] - h, ys[i + 1] - t[i + 1] * h, xs[i + 1], ys[i + 1]);
+  }
+}
+
+function drawChart(spec) {
+  const canvas = document.getElementById(spec.id);
+  const box = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const width = box.clientWidth, height = box.clientHeight;
+  canvas.width = Math.max(1, Math.floor(width * dpr));
+  canvas.height = Math.max(1, Math.floor(height * dpr));
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+
+  const points = series;
+  const values = points.map(point => point[spec.key]);
+  const secondary = !!spec.secondary;
+  const pad = { l: 78, r: secondary ? 58 : 22, t: 46, b: 72 };
+  const plotW = width - pad.l - pad.r, plotH = height - pad.t - pad.b;
+  const peak = values.length ? Math.max(...values) : 0;
+  const step = niceStep(peak * 1.05);
+  const yMax = Math.max(step, Math.ceil((peak * 1.05) / step) * step);
+  const digits = step < 1 ? 2 : 1;
+  const n = points.length;
+  const xAt = i => pad.l + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const yAt = v => pad.t + plotH - (v / yMax) * plotH;
+
+  ctx.fillStyle = "#595959";
+  ctx.font = "bold 17px Calibri, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(spec.title, width / 2, 12);
+
+  ctx.font = "12px Calibri, sans-serif";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 1;
+  for (let v = 0; v <= yMax + step / 1000; v += step) {
+    const y = Math.round(yAt(v)) + 0.5;
+    ctx.strokeStyle = "#d9d9d9";
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(width - pad.r, y); ctx.stroke();
+    ctx.fillText(fmt(v, digits).replace(/,/g, ""), pad.l - 8, y);
+  }
+  ctx.save();
+  ctx.translate(16, pad.t + plotH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = "center";
+  ctx.font = "13px Calibri, sans-serif";
+  ctx.fillText(spec.yTitle, 0, 0);
+  ctx.restore();
+
+  const axisY = pad.t + plotH;
+  ctx.strokeStyle = "#b0b0b0";
+  ctx.beginPath(); ctx.moveTo(pad.l, axisY + 0.5); ctx.lineTo(width - pad.r, axisY + 0.5); ctx.stroke();
+
+  if (n) {
+    const spacing = n <= 1 ? plotW : plotW / (n - 1);
+    const stride = Math.max(1, Math.ceil(13 / spacing));
+    ctx.font = "11.5px Calibri, sans-serif";
+    ctx.fillStyle = "#595959";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let i = 0; i < n; i += stride) {
+      ctx.save();
+      ctx.translate(xAt(i), axisY + 6);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(yearLabel(points[i].year), 0, 0);
+      ctx.restore();
+    }
+  }
+  ctx.font = "13px Calibri, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("On Air Year", pad.l + plotW / 2, height - 8);
+
+  if (!n) {
+    ctx.textBaseline = "middle";
+    ctx.fillText("No site with an On Air Year and a value", pad.l + plotW / 2, pad.t + plotH / 2);
+    canvas._geom = null;
+    return;
+  }
+  const xs = points.map((_, i) => xAt(i)), ys = values.map(yAt);
+  let yCount = null;
+  if (secondary) {
+    const countPeak = Math.max(...points.map(point => point.n), 1);
+    const countStep = Math.max(1, Math.round(niceStep(countPeak)));
+    const countMax = Math.max(countStep, Math.ceil(countPeak / countStep) * countStep);
+    yCount = v => pad.t + plotH - (v / countMax) * plotH;
+    const gap = n <= 1 ? plotW : plotW / (n - 1);
+    const barW = Math.max(8, Math.min(26, gap * 0.42));
+    points.forEach((point, i) => {
+      const y = yCount(point.n);
+      ctx.fillStyle = i === hover ? "rgba(237, 125, 49, 0.85)" : "rgba(237, 125, 49, 0.45)";
+      ctx.fillRect(xs[i] - barW / 2, y, barW, axisY - y);
+    });
+    ctx.fillStyle = "#C65911";
+    ctx.font = "12px Calibri, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    for (let v = 0; v <= countMax + 0.1; v += countStep) {
+      ctx.fillText(String(v), width - pad.r + 8, yCount(v));
+    }
+    ctx.save();
+    ctx.translate(width - 14, pad.t + plotH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.font = "13px Calibri, sans-serif";
+    ctx.fillText("Site count", 0, 0);
+    ctx.restore();
+  }
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = 3;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  if (n > 1) { ctx.beginPath(); monotone(ctx, xs, ys); ctx.stroke(); }
+  ctx.fillStyle = LINE;
+  xs.forEach((x, i) => { ctx.beginPath(); ctx.arc(x, ys[i], 3.4, 0, Math.PI * 2); ctx.fill(); });
+  if (hover >= 0 && hover < n) {
+    ctx.strokeStyle = "rgba(0,0,0,.25)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(xs[hover], pad.t); ctx.lineTo(xs[hover], axisY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = "#C00000";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(xs[hover], ys[hover], 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  function valueLabel(text, x, y, color) {
+    ctx.font = "bold 11px Calibri, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#fff";
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+  if (secondary) {
+    points.forEach((point, i) => {
+      const top = yCount(point.n);
+      const y = top - 11 < pad.t + 4 ? top + 11 : top - 11;
+      valueLabel(String(point.n), xs[i], y, "#C65911");
+    });
+  }
+  if (spec.key === "cumulative") {
+    points.forEach((point, i) => {
+      const y = ys[i] - 12 < pad.t + 4 ? ys[i] + 12 : ys[i] - 12;
+      valueLabel(String(point.cumulative), xs[i], y, LINE);
+    });
+  }
+  canvas._geom = { pad, plotW, plotH, n, xs, ys };
+}
+
+function drawAll() { CHARTS.forEach(drawChart); }
+
+function showTips() {
+  const point = hover >= 0 ? series[hover] : null;
+  CHARTS.forEach(spec => {
+    const tip = document.getElementById(spec.tip);
+    const geom = document.getElementById(spec.id)._geom;
+    if (!point || !geom || hover >= series.length) { tip.style.display = "none"; return; }
+    const countLine = spec.key === "cumulative"
+      ? `<br>Added this year: <b>${point.n.toLocaleString()}</b>`
+      : `<br><span style="color:#C65911">Site count this year: <b>${point.n.toLocaleString()}</b></span>`;
+    tip.innerHTML = `<b>${yearLabel(point.year)}</b><br>` +
+      `<span style="color:${LINE}">${spec.label}: <b>${fmt(point[spec.key], 1)} ${spec.unit}</b></span>${countLine}`;
+    tip.style.display = "block";
+    const box = tip.parentElement.getBoundingClientRect();
+    const tipW = tip.offsetWidth, tipH = tip.offsetHeight;
+    let left = geom.xs[hover] + 12;
+    if (left + tipW > box.width - 6) left = geom.xs[hover] - tipW - 12;
+    let top = geom.ys[hover] - tipH - 10;
+    if (top < 4) top = geom.ys[hover] + 12;
+    tip.style.left = Math.max(4, left) + "px";
+    tip.style.top = Math.max(4, top) + "px";
+  });
+  const year = point ? point.year : null;
+  document.querySelectorAll("#yearTable tbody tr").forEach(tr => tr.classList.toggle("hl", Number(tr.dataset.i) === hover));
+  document.querySelectorAll("#siteTable tbody tr").forEach(tr => tr.classList.toggle("hl", year != null && Number(tr.dataset.year) === year));
+}
+
+function setHover(index) {
+  if (index === hover) return;
+  hover = index;
+  drawAll();
+  showTips();
+}
+
+function onMove(event) {
+  const canvas = event.currentTarget;
+  const geom = canvas._geom;
+  if (!geom) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left, y = event.clientY - rect.top;
+  if (x < geom.pad.l - 10 || x > geom.pad.l + geom.plotW + 10 || y < geom.pad.t - 10 || y > geom.pad.t + geom.plotH + 10) {
+    setHover(-1);
+    return;
+  }
+  const i = geom.n <= 1 ? 0 : Math.round((x - geom.pad.l) / geom.plotW * (geom.n - 1));
+  setHover(Math.max(0, Math.min(geom.n - 1, i)));
+}
+
+function kpi(label, value) {
+  return `<div class="kpi"><b>${value}</b><span>${label}</span></div>`;
+}
+
+function renderReport() {
+  const d = district();
+  const rows = scopeRows();
+  exportRows = rows;
+  const onRows = rows.filter(row => row.on);
+  series = buildSeries(rows);
+  const first = series.length ? series[0].year : null;
+  const last = series.length ? series[series.length - 1].year : null;
+  const voiceSum = onRows.reduce((acc, row) => acc + row.site[VOICE], 0);
+  const dataSum = onRows.reduce((acc, row) => acc + row.site[DATA4G], 0);
+  const place = isDistrictView() ? d.name + " district" : thana().name;
+  document.getElementById("title").textContent = place;
+  document.getElementById("caption").textContent =
+    (isDistrictView()
+      ? `${d.thanas.length} thanas · ${rows.length.toLocaleString()} sites`
+      : `${d.name} district · ${rows.length.toLocaleString()} sites`) +
+    ` · ${onRows.length.toLocaleString()} on chart` +
+    (series.length ? ` · ${yearLabel(first)} to ${yearLabel(last)}` : "");
+  const districtSites = [];
+  d.thanas.forEach(t => charted(t).forEach(site => districtSites.push(site)));
+  const mean = (sites, col) => sites.length ? sites.reduce((acc, site) => acc + site[col], 0) / sites.length : null;
+  const chips = [
+    isDistrictView() ? kpi("Thanas", d.thanas.length.toLocaleString()) : kpi("District", d.name),
+    kpi("Sites", rows.length.toLocaleString()),
+    kpi("Sites on chart", onRows.length.toLocaleString()),
+    kpi("Oldest On Air Year", yearLabel(first)),
+    kpi("Newest On Air Year", yearLabel(last))
+  ];
+  const avg = (label, value) => `<div class="kpi avg"><b>${value}</b><span>${label}</span></div>`;
+  if (!isDistrictView()) {
+    const thanaSites = onRows.map(row => row.site);
+    chips.push(
+      avg("Voice / site · thana (Erl)", thanaSites.length ? fmt(mean(thanaSites, VOICE), 1) : "—"),
+      avg("Data volume / site · thana (GB)", thanaSites.length ? fmt(mean(thanaSites, DATA4G), 1) : "—")
+    );
+  }
+  chips.push(
+    avg("Voice / site · district (Erl)", districtSites.length ? fmt(mean(districtSites, VOICE), 1) : "—"),
+    avg("Data volume / site · district (GB)", districtSites.length ? fmt(mean(districtSites, DATA4G), 1) : "—")
+  );
+  document.getElementById("kpis").innerHTML = chips.join("");
+  const off = rows.length - onRows.length;
+  document.getElementById("note").textContent =
+    "Each point is one On Air Year, oldest first. The voice and 4G lines are the average for the sites that went on air in that year: that year's total divided by that year's site count. On both charts, the bars and the right axis are the sites added in that year. Cumulative site count is the running site count." +
+    (off ? ` ${off} site${off === 1 ? " is" : "s are"} not on the chart (no On Air Year, or #N/A value) and ${off === 1 ? "is" : "are"} listed at the bottom of the site table.` : "");
+
+  const voiceAvg = onRows.length ? voiceSum / onRows.length : 0;
+  const dataAvg = onRows.length ? dataSum / onRows.length : 0;
+  const yearRows = series.map((point, i) =>
+    `<tr data-i="${i}"><td>${yearLabel(point.year)}</td><td class="num">${point.n}</td><td class="num">${point.cumulative}</td><td class="num">${fmt(point.voice, 1)}</td><td class="num">${fmt(point.data, 1)}</td></tr>`).join("");
+  document.getElementById("yearTable").innerHTML =
+    `<thead><tr><th>On Air Year</th><th class="num">Sites this year</th><th class="num">Cumulative sites</th><th class="num">Average Total voice (Erl)</th><th class="num">Average DAILY 4G DATA (GB)</th></tr></thead>` +
+    `<tbody>${yearRows}</tbody>` +
+    (onRows.length ? `<tfoot><tr class="total"><td>All sites</td><td class="num">${onRows.length}</td><td class="num">${onRows.length}</td><td class="num">${fmt(voiceAvg, 1)}</td><td class="num">${fmt(dataAvg, 1)}</td></tr></tfoot>` : "");
+
+  document.getElementById("siteHead").textContent = `Sites in ${place} (${rows.length.toLocaleString()})`;
+  const thanaHead = isDistrictView() ? "<th>Thana</th>" : "";
+  const siteRows = rows.map((row, i) => {
+    const site = row.site;
+    const thanaCell = isDistrictView() ? `<td>${esc(row.thana)}</td>` : "";
+    return `<tr data-year="${row.on ? site[YEAR] : ""}" class="${row.on ? "" : "off"}">` +
+      `<td class="num">${row.on ? i + 1 : "—"}</td><td>${esc(site[CODE])}</td><td class="site-name" title="${esc(site[NAME])}">${esc(site[NAME])}</td>${thanaCell}` +
+      `<td>${yearLabel(site[YEAR])}</td><td>${esc(site[DATE] || "—")}</td><td>${esc(site[STATUS])}</td><td>${esc(site[TYPE])}</td>` +
+      `<td class="num">${fmt(site[VOICE], 2)}</td><td class="num">${fmt(site[DATA4G], 2)}</td></tr>`;
+  }).join("");
+  document.getElementById("siteTable").innerHTML =
+    `<thead><tr><th class="num">No.</th><th>Site Code</th><th>Site Name</th>${thanaHead}<th>On Air Year</th><th>On Air Date</th>` +
+    `<th>Site Status</th><th>Site Type</th><th class="num">Total voice (Erl)</th><th class="num">DAILY 4G DATA (GB)</th></tr></thead>` +
+    `<tbody>${siteRows}</tbody>`;
+  document.getElementById("siteScroll").scrollTop = 0;
+}
+
+function renderList() {
+  const rows = shownThanas();
+  const d = district();
+  const siteCount = d.thanas.reduce((acc, t) => acc + t.sites.length, 0);
+  const years = [];
+  d.thanas.forEach(t => charted(t).forEach(site => years.push(site[YEAR])));
+  years.sort((a, b) => a - b);
+  const span = years.length ? ` · ${yearLabel(years[0])} to ${yearLabel(years[years.length - 1])}` : "";
+  document.getElementById("listInfo").textContent =
+    `${d.thanas.length} thanas · ${siteCount.toLocaleString()} sites` + (query.trim() ? ` · ${rows.length} match` : "");
+  const districtButton = `<button type="button" class="thana district-row ${isDistrictView() ? "on" : ""}" data-i="-1">` +
+    `<div class="name">${esc(d.name)} district</div><div class="meta">${siteCount.toLocaleString()} sites · ${d.thanas.length} thanas${span}</div></button>`;
+  const thanaButtons = rows.map(({ t, i }) => {
+    const tYears = charted(t).map(site => site[YEAR]);
+    const tSpan = tYears.length ? ` · ${yearLabel(tYears[0])} to ${yearLabel(tYears[tYears.length - 1])}` : "";
+    return `<button type="button" class="thana ${i === thanaIndex ? "on" : ""}" data-i="${i}">` +
+      `<div class="name">${i + 1}. ${esc(t.name)}</div><div class="meta">${t.sites.length} site${t.sites.length === 1 ? "" : "s"}${tSpan}</div></button>`;
+  }).join("");
+  document.getElementById("list").innerHTML = districtButton + (thanaButtons || (query.trim() ? '<p class="sub" style="padding:10px 8px">No thana matches.</p>' : ""));
+  const active = document.querySelector(".thana.on");
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function navItems() {
+  return [-1].concat(shownThanas().map(row => row.i));
+}
+function updateNav() {
+  const items = navItems();
+  const pos = items.indexOf(thanaIndex);
+  document.getElementById("prev").disabled = pos <= 0;
+  document.getElementById("next").disabled = pos < 0 || pos >= items.length - 1;
+}
+
+function selectThana(index) {
+  thanaIndex = index < 0 ? -1 : Math.max(0, Math.min(district().thanas.length - 1, index));
+  hover = -1;
+  renderList();
+  renderReport();
+  drawAll();
+  showTips();
+  updateNav();
+  try {
+    const hash = isDistrictView()
+      ? "#" + encodeURIComponent(district().name)
+      : "#" + encodeURIComponent(district().name) + "/" + encodeURIComponent(thana().name);
+    history.replaceState(null, "", hash);
+  } catch (err) {}
+}
+
+function districtMatches() {
+  const q = districtQuery.trim().toLowerCase();
+  return VIEW.districts.map((d, i) => ({ d, i })).filter(({ d }) => !q || d.name.toLowerCase().includes(q));
+}
+function renderDistrictSelect() {
+  const matches = districtMatches();
+  const visible = !districtQuery.trim() || matches.some(row => row.i === districtIndex) || !matches.length
+    ? matches
+    : [{ d: VIEW.districts[districtIndex], i: districtIndex }, ...matches];
+  const select = document.getElementById("district");
+  select.innerHTML = visible.length ? visible.map(({ d, i }) => {
+    const n = d.thanas.reduce((acc, t) => acc + t.sites.length, 0);
+    return `<option value="${i}">${esc(d.name)} (${n.toLocaleString()} sites)</option>`;
+  }).join("") : `<option value="${districtIndex}">No district matches</option>`;
+  select.size = districtQuery.trim() && visible.length > 1 ? Math.min(visible.length, 6) : 1;
+  select.value = String(districtIndex);
+}
+function selectDistrict(index, thanaName) {
+  districtIndex = index;
+  districtQuery = "";
+  document.getElementById("districtQ").value = "";
+  query = "";
+  document.getElementById("q").value = "";
+  renderDistrictSelect();
+  const found = thanaName ? district().thanas.findIndex(t => t.name === thanaName) : -1;
+  selectThana(found >= 0 ? found : -1);
+}
+
+function step(delta) {
+  const items = navItems();
+  let pos = items.indexOf(thanaIndex);
+  if (pos < 0) pos = 0;
+  pos = Math.max(0, Math.min(items.length - 1, pos + delta));
+  selectThana(items[pos]);
+}
+
+const totalSites = VIEW.districts.reduce((acc, d) => acc + d.thanas.reduce((a, t) => a + t.sites.length, 0), 0);
+const totalThanas = VIEW.districts.reduce((acc, d) => acc + d.thanas.length, 0);
+document.getElementById("source").textContent =
+  `${VIEW.source} · ${totalSites.toLocaleString()} sites · ${VIEW.districts.length} districts · ${totalThanas} thanas · ${VIEW.version}`;
+document.getElementById("district").addEventListener("change", event => {
+  const index = Number(event.target.value);
+  if (!Number.isNaN(index)) selectDistrict(index);
+});
+document.getElementById("districtQ").addEventListener("input", event => {
+  districtQuery = event.target.value;
+  renderDistrictSelect();
+});
+document.getElementById("districtQ").addEventListener("keydown", event => {
+  if (event.key !== "Enter") return;
+  const matches = districtMatches();
+  if (matches.length) selectDistrict(matches[0].i);
+});
+document.getElementById("q").addEventListener("input", event => {
+  query = event.target.value;
+  renderList();
+  updateNav();
+});
+document.getElementById("q").addEventListener("keydown", event => {
+  if (event.key !== "Enter") return;
+  const rows = shownThanas();
+  selectThana(rows.length ? rows[0].i : -1);
+});
+document.getElementById("list").addEventListener("click", event => {
+  const button = event.target.closest(".thana");
+  if (button) selectThana(Number(button.dataset.i));
+});
+function csvCell(value) {
+  const text = value == null ? "" : String(value);
+  return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+}
+function downloadCsv(filename, rows) {
+  const csv = rows.map(row => row.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+function fileSlug(text) {
+  return String(text).replace(/[^\w]+/g, "_").replace(/^_|_$/g, "") || "export";
+}
+function exportName(kind) {
+  const place = isDistrictView() ? district().name + "_district" : district().name + "_" + thana().name;
+  return "Robi_Live_Site_" + fileSlug(place) + "_" + kind + ".csv";
+}
+function num(value) {
+  return typeof value === "number" ? value.toFixed(2) : (value == null || value === "" ? "" : value);
+}
+document.getElementById("exportYear").addEventListener("click", () => {
+  const onRows = exportRows.filter(row => row.on);
+  const voiceSum = onRows.reduce((acc, row) => acc + row.site[VOICE], 0);
+  const dataSum = onRows.reduce((acc, row) => acc + row.site[DATA4G], 0);
+  const voiceAvg = onRows.length ? voiceSum / onRows.length : 0;
+  const dataAvg = onRows.length ? dataSum / onRows.length : 0;
+  const table = [["On Air Year", "Sites this year", "Cumulative sites", "Average Total voice (Erl)", "Average DAILY 4G DATA (GB)"]];
+  series.forEach(point => table.push([yearLabel(point.year), point.n, point.cumulative, point.voice.toFixed(2), point.data.toFixed(2)]));
+  if (onRows.length) table.push(["All sites", onRows.length, onRows.length, voiceAvg.toFixed(2), dataAvg.toFixed(2)]);
+  downloadCsv(exportName("by_on_air_year"), table);
+});
+document.getElementById("exportSites").addEventListener("click", () => {
+  const districtView = isDistrictView();
+  const header = ["No.", "Site Code", "Site Name"];
+  if (districtView) header.push("Thana");
+  header.push("On Air Year", "On Air Date", "Site Status", "Site Type", "Total voice (Erl)", "DAILY 4G DATA (GB)");
+  const table = [header];
+  exportRows.forEach((row, i) => {
+    const site = row.site;
+    const line = [row.on ? i + 1 : "", site[CODE], site[NAME]];
+    if (districtView) line.push(row.thana);
+    line.push(yearLabel(site[YEAR]), site[DATE] || "", site[STATUS], site[TYPE], num(site[VOICE]), num(site[DATA4G]));
+    table.push(line);
+  });
+  downloadCsv(exportName("sites"), table);
+});
+document.getElementById("prev").addEventListener("click", () => step(-1));
+document.getElementById("next").addEventListener("click", () => step(1));
+CHARTS.forEach(spec => {
+  const canvas = document.getElementById(spec.id);
+  canvas.addEventListener("mousemove", onMove);
+  canvas.addEventListener("mouseleave", () => setHover(-1));
+});
+document.getElementById("yearTable").addEventListener("mouseover", event => {
+  const tr = event.target.closest("tbody tr");
+  if (tr) setHover(Number(tr.dataset.i));
+});
+document.getElementById("siteTable").addEventListener("mouseover", event => {
+  const tr = event.target.closest("tbody tr");
+  if (!tr || tr.dataset.year === "") return;
+  const index = series.findIndex(point => point.year === Number(tr.dataset.year));
+  if (index >= 0) setHover(index);
+});
+document.getElementById("siteTable").addEventListener("mouseleave", () => setHover(-1));
+window.addEventListener("resize", drawAll);
+
+let upFilter = "either";
+let upQuery = "";
+function trendFor(sites) {
+  const points = buildSeries(sites.map(site => ({ site, on: true })));
+  if (points.length < 2) return null;
+  const oldest = points[0];
+  const newest = points[points.length - 1];
+  return {
+    years: points.length,
+    sites: newest.cumulative,
+    oldestYear: oldest.year,
+    newestYear: newest.year,
+    oldestN: oldest.n,
+    newestN: newest.n,
+    voiceOld: oldest.voice,
+    voiceNew: newest.voice,
+    dataOld: oldest.data,
+    dataNew: newest.data,
+    voiceUp: newest.voice > oldest.voice,
+    dataUp: newest.data > oldest.data
+  };
+}
+const INCREASED = [];
+VIEW.districts.forEach((d, dIndex) => {
+  const all = [];
+  d.thanas.forEach(t => { for (let i = 0; i < t.charted; i++) all.push(t.sites[i]); });
+  const districtTrend = trendFor(all);
+  if (districtTrend && (districtTrend.voiceUp || districtTrend.dataUp)) {
+    INCREASED.push({ districtName: d.name, thanaName: "", dIndex, tIndex: -1, ...districtTrend });
+  }
+  d.thanas.forEach((t, tIndex) => {
+    const trend = trendFor(t.sites.slice(0, t.charted));
+    if (trend && (trend.voiceUp || trend.dataUp)) {
+      INCREASED.push({ districtName: d.name, thanaName: t.name, dIndex, tIndex, ...trend });
+    }
+  });
+});
+function upMatches(row) {
+  if (upFilter === "voice" && !row.voiceUp) return false;
+  if (upFilter === "data" && !row.dataUp) return false;
+  if (upFilter === "both" && !(row.voiceUp && row.dataUp)) return false;
+  const q = upQuery.trim().toLowerCase();
+  if (!q) return true;
+  return row.districtName.toLowerCase().includes(q) || row.thanaName.toLowerCase().includes(q);
+}
+function changeText(newer, older) {
+  const diff = newer - older;
+  const sign = diff > 0 ? "+" : "";
+  const pct = older ? ` (${sign}${(diff / older * 100).toFixed(0)}%)` : "";
+  return sign + fmt(diff, 1) + pct;
+}
+function renderIncreased() {
+  const rows = INCREASED.filter(upMatches);
+  const districts = INCREASED.filter(row => !row.thanaName);
+  const thanas = INCREASED.filter(row => row.thanaName);
+  const count = (list, key) => list.filter(row => row[key]).length;
+  const both = list => list.filter(row => row.voiceUp && row.dataUp).length;
+  document.getElementById("upKpis").innerHTML = [
+    kpi("Districts", String(districts.length)),
+    kpi("Thanas", String(thanas.length)),
+    kpi("Voice increased", String(count(INCREASED, "voiceUp"))),
+    kpi("Data increased", String(count(INCREASED, "dataUp"))),
+    kpi("Both increased", String(both(INCREASED)))
+  ].join("");
+  document.getElementById("upNote").textContent =
+    "A district or thana is listed when its newest On Air Year average is higher than its oldest. " +
+    "Voice and data are checked separately. The change is newest average minus oldest average. " +
+    "Click a row to open that chart. Showing " + rows.length.toLocaleString() + " of " + INCREASED.length.toLocaleString() + ".";
+  const body = rows.map(row => {
+    const voiceCls = row.voiceUp ? "up" : "down";
+    const dataCls = row.dataUp ? "up" : "down";
+    return `<tr class="${row.thanaName ? "" : "district-line"}" data-d="${row.dIndex}" data-t="${row.tIndex}">` +
+      `<td>${esc(row.districtName)}</td><td>${row.thanaName ? esc(row.thanaName) : "District"}</td>` +
+      `<td>${yearLabel(row.oldestYear)} to ${yearLabel(row.newestYear)}</td>` +
+      `<td class="num">${row.years}</td><td class="num">${row.sites}</td>` +
+      `<td class="num">${row.oldestN}</td><td class="num">${row.newestN}</td>` +
+      `<td class="num">${fmt(row.voiceOld, 1)}</td><td class="num">${fmt(row.voiceNew, 1)}</td>` +
+      `<td class="num ${voiceCls}">${changeText(row.voiceNew, row.voiceOld)}</td>` +
+      `<td class="num">${fmt(row.dataOld, 1)}</td><td class="num">${fmt(row.dataNew, 1)}</td>` +
+      `<td class="num ${dataCls}">${changeText(row.dataNew, row.dataOld)}</td></tr>`;
+  }).join("");
+  document.getElementById("upTable").innerHTML =
+    `<thead><tr><th>District</th><th>Thana</th><th>On Air Years</th><th class="num">Years</th><th class="num">Sites on chart</th>` +
+    `<th class="num">Oldest year sites</th><th class="num">Newest year sites</th>` +
+    `<th class="num">Oldest avg voice (Erl)</th><th class="num">Newest avg voice (Erl)</th><th class="num">Voice change</th>` +
+    `<th class="num">Oldest avg data (GB)</th><th class="num">Newest avg data (GB)</th><th class="num">Data change</th></tr></thead>` +
+    `<tbody>${body || `<tr><td colspan="13">No district or thana matches.</td></tr>`}</tbody>`;
+}
+function showTab(next) {
+  const up = next === "up";
+  document.body.classList.toggle("tab-up", up);
+  document.getElementById("liveView").hidden = up;
+  document.getElementById("upView").hidden = !up;
+  document.getElementById("tabLive").classList.toggle("on", !up);
+  document.getElementById("tabUp").classList.toggle("on", up);
+  if (up) {
+    renderIncreased();
+    try { history.replaceState(null, "", "#traffic-increased"); } catch (err) {}
+  } else {
+    try {
+      const hash = isDistrictView()
+        ? "#" + encodeURIComponent(district().name)
+        : "#" + encodeURIComponent(district().name) + "/" + encodeURIComponent(thana().name);
+      history.replaceState(null, "", hash);
+    } catch (err) {}
+    requestAnimationFrame(() => requestAnimationFrame(drawAll));
+  }
+}
+function openPlace(dIndex, tIndex) {
+  const name = tIndex >= 0 ? VIEW.districts[dIndex].thanas[tIndex].name : "";
+  showTab("live");
+  selectDistrict(dIndex, name);
+}
+document.getElementById("tabLive").addEventListener("click", () => showTab("live"));
+document.getElementById("tabUp").addEventListener("click", () => showTab("up"));
+document.getElementById("upQ").addEventListener("input", event => {
+  upQuery = event.target.value;
+  renderIncreased();
+});
+document.getElementById("upFilters").addEventListener("click", event => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  upFilter = button.dataset.f;
+  document.querySelectorAll("#upFilters button").forEach(item => item.classList.toggle("on", item === button));
+  renderIncreased();
+});
+document.getElementById("upTable").addEventListener("click", event => {
+  const tr = event.target.closest("tbody tr");
+  if (!tr || tr.dataset.d == null) return;
+  openPlace(Number(tr.dataset.d), Number(tr.dataset.t));
+});
+document.getElementById("exportUp").addEventListener("click", () => {
+  const table = [[
+    "District", "Thana", "Oldest On Air Year", "Newest On Air Year", "Years", "Sites on chart",
+    "Oldest year sites", "Newest year sites",
+    "Oldest avg voice (Erl)", "Newest avg voice (Erl)", "Voice change (Erl)", "Voice increased",
+    "Oldest avg data (GB)", "Newest avg data (GB)", "Data change (GB)", "Data increased"
+  ]];
+  INCREASED.filter(upMatches).forEach(row => {
+    table.push([
+      row.districtName, row.thanaName || "District", yearLabel(row.oldestYear), yearLabel(row.newestYear),
+      row.years, row.sites, row.oldestN, row.newestN,
+      row.voiceOld.toFixed(2), row.voiceNew.toFixed(2), (row.voiceNew - row.voiceOld).toFixed(2), row.voiceUp ? "Yes" : "No",
+      row.dataOld.toFixed(2), row.dataNew.toFixed(2), (row.dataNew - row.dataOld).toFixed(2), row.dataUp ? "Yes" : "No"
+    ]);
+  });
+  downloadCsv("Robi_Live_Site_Traffic_Increased.csv", table);
+});
+
+(function start() {
+  const raw = (location.hash || "").replace(/^#/, "");
+  if (decodeURIComponent(raw) === "traffic-increased") {
+    selectDistrict(0);
+    showTab("up");
+    return;
+  }
+  const cut = raw.indexOf("/");
+  const dName = decodeURIComponent(cut >= 0 ? raw.slice(0, cut) : raw);
+  const tName = cut >= 0 ? decodeURIComponent(raw.slice(cut + 1)) : "";
+  const found = VIEW.districts.findIndex(d => d.name === dName);
+  selectDistrict(found >= 0 ? found : 0, tName);
+})();
+</script>
+</body>
+</html>
