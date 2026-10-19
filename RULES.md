@@ -1,4 +1,4 @@
-# Dashboard rules — v3
+# Dashboard rules — v4
 
 Source: `Robi Live Site_Aug_2026.xlsx`, first sheet. Columns are found by their header text on row 1, not by letter.
 
@@ -11,6 +11,7 @@ One web page, no Excel output. A single self-contained HTML file (charts drawn o
   1. `On Air Year` (X) vs `Total voice` (Y), titled `Total voice(Erl) vs On Air Year`, Y axis `Avg Total voice, Erl / site`.
   2. `On Air Year` (X) vs `DAILY 4G DATA (GB)` (Y), titled `DAILY 4G DATA (GB) vs  On Air Year`, Y axis `Avg DAILY 4G DATA, GB / site`.
 - Report under the charts: site-count chips, then **per site Total voice (Erl)** and **per site data volume (GB)**. A thana view shows that thana's two averages and the district's two averages. The district view shows the district's two averages. These are the sites on the chart added together, divided by that site count. Sums are not shown. Under the chips: a **By On Air Year** table of averages per site, and the site table. The site table keeps each site's own voice and data.
+- Each table has an **Export** button. It downloads a CSV of that table for the district or thana on screen (every row, including sites with no On Air Year or `#N/A`). Excel opens the file. Numbers have no thousands separator.
 - The URL hash is `#District` for the district chart and `#District/Thana` for a thana.
 
 ## Chart rules
@@ -35,7 +36,7 @@ One web page, no Excel output. A single self-contained HTML file (charts drawn o
 ## Build
 
 ```bash
-python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v3.html --version v3
+python3 scripts/build_dashboard.py "Robi Live Site_Aug_2026.xlsx" -o Robi_Live_Site_Aug_2026_Dashboard_v4.html --version v4
 ```
 
 Python 3 standard library only. Writes the `.html` and the `.zip` next to it. For a new month, upload the new workbook, run the same command with the new file name and the next version, and keep these rules.
